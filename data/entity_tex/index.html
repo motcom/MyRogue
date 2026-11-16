@@ -1,0 +1,90 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><title>Entity textures · Ash & Rust 32</title>
+<style>body{background:#0e1113;color:#d0cdbb;font:16px sans-serif;margin:32px}h1{color:#f0e6cc}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+figure{margin:0;padding:12px;background:#1a2023}img{width:128px;height:128px;image-rendering:pixelated}
+.tile{width:128px;height:128px;background:repeating-conic-gradient(#465256 0% 25%,#2b3335 0% 50%) 0/32px 32px}
+body[data-bg="field"] .tile{background:url(static/terrain.field.png);background-size:128px}
+body[data-bg="road"] .tile{background:url(static/terrain.road.png);background-size:128px}
+figcaption{margin-top:8px}code{font-size:12px}button{margin:0 8px 20px 0;padding:8px}</style>
+<h1>Entity textures · Ash & Rust 32</h1><p>全78定義 / 32×32 RGBA / 4倍表示。背景を切り替えて透過を確認。</p>
+<button onclick="document.body.dataset.bg=''">透過チェッカー</button>
+<button onclick="document.body.dataset.bg='field'">野原に重ねる</button>
+<button onclick="document.body.dataset.bg='road'">道に重ねる</button>
+<div class="grid"><figure><div class="tile"><img src="movable/player.survivor.png"></div><figcaption>生存者<br><code>player.survivor</code></figcaption></figure>
+<figure><div class="tile"><img src="movable/monster.ghoul_worker.png"></div><figcaption>グール ワーカー<br><code>monster.ghoul_worker</code></figcaption></figure>
+<figure><div class="tile"><img src="movable/monster.ghoul_warrior.png"></div><figcaption>グール ウォーリア<br><code>monster.ghoul_warrior</code></figcaption></figure>
+<figure><div class="tile"><img src="movable/monster.ghoul_archer.png"></div><figcaption>グール アーチャー<br><code>monster.ghoul_archer</code></figcaption></figure>
+<figure><div class="tile"><img src="static/terrain.field.png"></div><figcaption>野原<br><code>terrain.field</code></figcaption></figure>
+<figure><div class="tile"><img src="static/terrain.road.png"></div><figcaption>道<br><code>terrain.road</code></figcaption></figure>
+<figure><div class="tile"><img src="static/obstacle.stone_wall.png"></div><figcaption>石壁<br><code>obstacle.stone_wall</code></figcaption></figure>
+<figure><div class="tile"><img src="static/obstacle.tree.png"></div><figcaption>木<br><code>obstacle.tree</code></figcaption></figure>
+<figure><div class="tile"><img src="static/obstacle.wooden_door.png"></div><figcaption>木の扉<br><code>obstacle.wooden_door</code></figcaption></figure>
+<figure><div class="tile"><img src="static/terrain.pond.png"></div><figcaption>池<br><code>terrain.pond</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.knife.png"></div><figcaption>ナイフ<br><code>item.knife</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.club.png"></div><figcaption>棍棒<br><code>item.club</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.glock.png"></div><figcaption>グロック<br><code>item.glock</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.crossbow.png"></div><figcaption>クロスボウ<br><code>item.crossbow</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.sks.png"></div><figcaption>SKS<br><code>item.sks</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.bandage.png"></div><figcaption>包帯<br><code>item.bandage</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.disinfectant.png"></div><figcaption>消毒薬<br><code>item.disinfectant</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.syringe.png"></div><figcaption>注射器<br><code>item.syringe</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.bread.png"></div><figcaption>パン<br><code>item.bread</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.mineral_water.png"></div><figcaption>ミネラルウォーター<br><code>item.mineral_water</code></figcaption></figure>
+<figure><div class="tile"><img src="item/ammo.pistol.png"></div><figcaption>拳銃弾<br><code>ammo.pistol</code></figcaption></figure>
+<figure><div class="tile"><img src="item/ammo.bolt.png"></div><figcaption>クロスボウボルト<br><code>ammo.bolt</code></figcaption></figure>
+<figure><div class="tile"><img src="item/ammo.rifle.png"></div><figcaption>ライフル弾<br><code>ammo.rifle</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.wood.png"></div><figcaption>木材<br><code>item.wood</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.treasure_chest.png"></div><figcaption>宝箱<br><code>item.treasure_chest</code></figcaption></figure>
+<figure><div class="tile"><img src="static/facility.workbench.png"></div><figcaption>万力付き作業台<br><code>facility.workbench</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.hammer.png"></div><figcaption>ハンマー<br><code>item.hammer</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.leather_armor.png"></div><figcaption>革の鎧<br><code>item.leather_armor</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.short_sword.png"></div><figcaption>ショートソード<br><code>item.short_sword</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.long_sword.png"></div><figcaption>ロングソード<br><code>item.long_sword</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.bastard_sword.png"></div><figcaption>バスタードソード<br><code>item.bastard_sword</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.mace.png"></div><figcaption>メイス<br><code>item.mace</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.spear.png"></div><figcaption>槍<br><code>item.spear</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.cleaver.png"></div><figcaption>大鉈<br><code>item.cleaver</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.ak.png"></div><figcaption>AK<br><code>item.ak</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.m16.png"></div><figcaption>M16<br><code>item.m16</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.apple.png"></div><figcaption>りんご<br><code>item.apple</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.raw_meat.png"></div><figcaption>肉(生)<br><code>item.raw_meat</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.cooked_meat.png"></div><figcaption>肉(焼き)<br><code>item.cooked_meat</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.rotten_meat.png"></div><figcaption>肉（腐り）<br><code>item.rotten_meat</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.carrot.png"></div><figcaption>人参<br><code>item.carrot</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.cabbage.png"></div><figcaption>キャベツ<br><code>item.cabbage</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.dirty_water.png"></div><figcaption>水（汚染）<br><code>item.dirty_water</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.clean_water.png"></div><figcaption>水（清潔）<br><code>item.clean_water</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.vitamins.png"></div><figcaption>ビタミン剤<br><code>item.vitamins</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.frag_grenade.png"></div><figcaption>爆発手榴弾<br><code>item.frag_grenade</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.flash_grenade.png"></div><figcaption>閃光手榴弾<br><code>item.flash_grenade</code></figcaption></figure>
+<figure><div class="tile"><img src="static/terrain.wasteland.png"></div><figcaption>荒地<br><code>terrain.wasteland</code></figcaption></figure>
+<figure><div class="tile"><img src="static/obstacle.table.png"></div><figcaption>テーブル<br><code>obstacle.table</code></figcaption></figure>
+<figure><div class="tile"><img src="static/obstacle.chair.png"></div><figcaption>椅子<br><code>obstacle.chair</code></figcaption></figure>
+<figure><div class="tile"><img src="static/obstacle.wooden_wall.png"></div><figcaption>木の壁<br><code>obstacle.wooden_wall</code></figcaption></figure>
+<figure><div class="tile"><img src="static/obstacle.conifer.png"></div><figcaption>針葉樹<br><code>obstacle.conifer</code></figcaption></figure>
+<figure><div class="tile"><img src="static/obstacle.hedge.png"></div><figcaption>生垣<br><code>obstacle.hedge</code></figcaption></figure>
+<figure><div class="tile"><img src="static/obstacle.fence.png"></div><figcaption>柵<br><code>obstacle.fence</code></figcaption></figure>
+<figure><div class="tile"><img src="static/obstacle.lamp.png"></div><figcaption>ランプ<br><code>obstacle.lamp</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.shield.png"></div><figcaption>盾<br><code>item.shield</code></figcaption></figure>
+<figure><div class="tile"><img src="movable/monster.ghoul_runner.png"></div><figcaption>グール・ランナー<br><code>monster.ghoul_runner</code></figcaption></figure>
+<figure><div class="tile"><img src="movable/monster.ghoul_butcher.png"></div><figcaption>グール・ブッチャー<br><code>monster.ghoul_butcher</code></figcaption></figure>
+<figure><div class="tile"><img src="movable/monster.ghoul_guard.png"></div><figcaption>グール・ガード<br><code>monster.ghoul_guard</code></figcaption></figure>
+<figure><div class="tile"><img src="movable/monster.ghoul_howler.png"></div><figcaption>グール・ハウラー<br><code>monster.ghoul_howler</code></figcaption></figure>
+<figure><div class="tile"><img src="movable/monster.ghoul_scavenger.png"></div><figcaption>グール・スカベンジャー<br><code>monster.ghoul_scavenger</code></figcaption></figure>
+<figure><div class="tile"><img src="movable/monster.ghoul_stalker.png"></div><figcaption>グール・ストーカー<br><code>monster.ghoul_stalker</code></figcaption></figure>
+<figure><div class="tile"><img src="movable/monster.ghoul_brute.png"></div><figcaption>グール・ブルート<br><code>monster.ghoul_brute</code></figcaption></figure>
+<figure><div class="tile"><img src="movable/monster.ghoul_rifleman.png"></div><figcaption>グール・ライフルマン<br><code>monster.ghoul_rifleman</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.hand_drill.png"></div><figcaption>手回しドリル<br><code>item.hand_drill</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.metal_saw.png"></div><figcaption>金属のこぎり<br><code>item.metal_saw</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.metal_file.png"></div><figcaption>金属やすり<br><code>item.metal_file</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.forging_hammer.png"></div><figcaption>金工ハンマー<br><code>item.forging_hammer</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.sewing_kit.png"></div><figcaption>裁縫セット<br><code>item.sewing_kit</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.cooking_kit.png"></div><figcaption>携帯調理セット<br><code>item.cooking_kit</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.wood_saw.png"></div><figcaption>木工のこぎり<br><code>item.wood_saw</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.metal_stock.png"></div><figcaption>加工用鉄材<br><code>item.metal_stock</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.cloth.png"></div><figcaption>清潔な布<br><code>item.cloth</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.leather_piece.png"></div><figcaption>革片<br><code>item.leather_piece</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.thread.png"></div><figcaption>糸<br><code>item.thread</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.charcoal.png"></div><figcaption>木炭<br><code>item.charcoal</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.wood_handle.png"></div><figcaption>木柄<br><code>item.wood_handle</code></figcaption></figure>
+<figure><div class="tile"><img src="item/item.crafting_storage.png"></div><figcaption>制作ストレージ<br><code>item.crafting_storage</code></figcaption></figure></div></html>

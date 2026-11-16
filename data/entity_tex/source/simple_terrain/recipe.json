@@ -1,0 +1,89 @@
+{
+  "generator": "built-in imagegen",
+  "tiles": [
+    {
+      "id": "terrain.field",
+      "base": "forest",
+      "accent": "moss",
+      "palette_ids": [
+        "forest",
+        "moss",
+        "olive"
+      ],
+      "max_detail_pixels": 384,
+      "desc": "dark grassland with four small irregular grass tufts, each a few connected pixel strokes; sparse moss patches",
+      "source": "terrain.field-v2.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE seamless 32x32 logical pixel terrain tile enlarged to square with crisp nearest-neighbor blocks. Subject: dark grassland with four small irregular grass tufts, each a few connected pixel strokes; sparse moss patches. Three solid colors ONLY: base #1E302A, midtone #3C5140, restrained accent #64704B. Base occupies about 75-85 percent; grouped meaningful details occupy remaining area, avoid noisy single pixel speckles. Muted post-apocalyptic roguelike pixel art. Entire square filled edge to edge, FULLY OPAQUE. Flat orthographic surface, no perspective, no object, no border or frame, no text, no gradients, no antialiasing, no vignette. Readable behind characters. Draw intentional visible texture on a 32x32 logical grid, not a blank solid tile."
+    },
+    {
+      "id": "terrain.road",
+      "base": "peat",
+      "accent": "bark",
+      "palette_ids": [
+        "peat",
+        "bark",
+        "timber"
+      ],
+      "max_detail_pixels": 384,
+      "desc": "worn dirt road surface with three short broad horizontal soil streaks and two tiny inset stones; no road edges, entire square is dirt",
+      "source": "terrain.road-v2.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE seamless 32x32 logical pixel terrain tile enlarged to square with crisp nearest-neighbor blocks. Subject: worn dirt road surface with three short broad horizontal soil streaks and two tiny inset stones; no road edges, entire square is dirt. Three solid colors ONLY: base #302A24, midtone #534133, restrained accent #7A5B40. Base occupies about 75-85 percent; grouped meaningful details occupy remaining area, avoid noisy single pixel speckles. Muted post-apocalyptic roguelike pixel art. Entire square filled edge to edge, FULLY OPAQUE. Flat orthographic surface, no perspective, no object, no border or frame, no text, no gradients, no antialiasing, no vignette. Readable behind characters. Draw intentional visible texture on a 32x32 logical grid, not a blank solid tile."
+    },
+    {
+      "id": "terrain.pond",
+      "base": "deep_water",
+      "accent": "slate_blue",
+      "palette_ids": [
+        "deep_water",
+        "slate_blue",
+        "verdigris"
+      ],
+      "max_detail_pixels": 384,
+      "desc": "still dark water with three separated staggered short horizontal ripple clusters, restrained highlights",
+      "source": "terrain.pond-v2.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE seamless 32x32 logical pixel terrain tile enlarged to square with crisp nearest-neighbor blocks. Subject: still dark water with three separated staggered short horizontal ripple clusters, restrained highlights. Three solid colors ONLY: base #192E3B, midtone #34586A, restrained accent #5B8991. Base occupies about 75-85 percent; grouped meaningful details occupy remaining area, avoid noisy single pixel speckles. Muted post-apocalyptic roguelike pixel art. Entire square filled edge to edge, FULLY OPAQUE. Flat orthographic surface, no perspective, no object, no border or frame, no text, no gradients, no antialiasing, no vignette. Readable behind characters. Draw intentional visible texture on a 32x32 logical grid, not a blank solid tile."
+    },
+    {
+      "id": "terrain.wasteland",
+      "base": "soot",
+      "accent": "peat",
+      "palette_ids": [
+        "soot",
+        "peat",
+        "bark"
+      ],
+      "max_detail_pixels": 384,
+      "desc": "barren earth with two small branching cracks and a few broad flat soil patches",
+      "source": "terrain.wasteland-v2.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE seamless 32x32 logical pixel terrain tile enlarged to square with crisp nearest-neighbor blocks. Subject: barren earth with two small branching cracks and a few broad flat soil patches. Three solid colors ONLY: base #1A2023, midtone #302A24, restrained accent #534133. Base occupies about 75-85 percent; grouped meaningful details occupy remaining area, avoid noisy single pixel speckles. Muted post-apocalyptic roguelike pixel art. Entire square filled edge to edge, FULLY OPAQUE. Flat orthographic surface, no perspective, no object, no border or frame, no text, no gradients, no antialiasing, no vignette. Readable behind characters. Draw intentional visible texture on a 32x32 logical grid, not a blank solid tile."
+    },
+    {
+      "id": "obstacle.stone_wall",
+      "base": "charcoal",
+      "accent": "steel",
+      "palette_ids": [
+        "charcoal",
+        "steel",
+        "ash"
+      ],
+      "max_detail_pixels": 384,
+      "desc": "large staggered masonry blocks, thin dark mortar joints, subdued short light upper edges on a few blocks; flat tile not an isolated wall",
+      "source": "obstacle.stone_wall-v2.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE seamless 32x32 logical pixel terrain tile enlarged to square with crisp nearest-neighbor blocks. Subject: large staggered masonry blocks, thin dark mortar joints, subdued short light upper edges on a few blocks; flat tile not an isolated wall. Three solid colors ONLY: base #2B3335, midtone #465256, restrained accent #718080. Base occupies about 75-85 percent; grouped meaningful details occupy remaining area, avoid noisy single pixel speckles. Muted post-apocalyptic roguelike pixel art. Entire square filled edge to edge, FULLY OPAQUE. Flat orthographic surface, no perspective, no object, no border or frame, no text, no gradients, no antialiasing, no vignette. Readable behind characters. Draw intentional visible texture on a 32x32 logical grid, not a blank solid tile."
+    },
+    {
+      "id": "obstacle.wooden_wall",
+      "base": "peat",
+      "accent": "bark",
+      "palette_ids": [
+        "peat",
+        "bark",
+        "timber"
+      ],
+      "max_detail_pixels": 384,
+      "desc": "four broad vertical weathered wooden planks, narrow dark seams and a few short muted grain strokes, restrained light edges",
+      "source": "obstacle.wooden_wall-v2.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE seamless 32x32 logical pixel terrain tile enlarged to square with crisp nearest-neighbor blocks. Subject: four broad vertical weathered wooden planks, narrow dark seams and a few short muted grain strokes, restrained light edges. Three solid colors ONLY: base #302A24, midtone #534133, restrained accent #7A5B40. Base occupies about 75-85 percent; grouped meaningful details occupy remaining area, avoid noisy single pixel speckles. Muted post-apocalyptic roguelike pixel art. Entire square filled edge to edge, FULLY OPAQUE. Flat orthographic surface, no perspective, no object, no border or frame, no text, no gradients, no antialiasing, no vignette. Readable behind characters. Draw intentional visible texture on a 32x32 logical grid, not a blank solid tile."
+    }
+  ]
+}

@@ -1,0 +1,750 @@
+@startuml
+title ゲーム構造と道具・金属加工（棍棒の初期製作に対応）
+skinparam classAttributeIconSize 0
+
+struct Game {
+    player_id:EntityId
+    entities:HashMap<EntityId, Entity>
+    map:Map
+    recipes:Vec<Recipe>
+    entity_definitions:HashMap<DefinitionId, EntityDefinition>
+    scripts:LuaRuntime
+    pending_action:Option<Action>
+    projectiles:VecDeque<Projectile>
+    sounds:VecDeque<Sound>
+    running:bool
+    turn:u64
+
+    tick(ctx)
+
+    input()
+    update()
+    update_frame(elapsed_ms)
+    render()
+}
+
+note right of Game
+    プレイヤーを含む全実体は entities が一括所有する。
+    player_id は入力制御する movable の Entity を指す。
+    GameState::tick から input → update → render の順に呼ぶ。
+    input は Action を作り、状態変更は update で行う。
+    update_frame は弾道演出の実時間更新と update を行う。
+    音イベントはGUIのPlayingGameがtick後に取り出して非同期再生する。
+    音声デバイスと再生状態はGameの外で保持する。
+    時間を消費する行動と製作進行は update で処理する。
+    render はゲーム状態を変更しない。
+    running が false なら終了を要求する。
+end note
+
+interface Update{
+    update()
+}
+
+struct Psykick{
+    name:String
+    disc:String
+    shiyou_kaisu:u32
+    exe:LuaHookRef <on_ability>
+    update()
+}
+
+struct Skill{
+    melee_weapon:u32
+    shield:u32
+    rifle:u32
+    bow:u32
+    touteki:u32
+    picking:u32
+    hacking:u32
+    wood_craft:u32
+    metal_craft:u32
+    denshi_craft:u32
+    saihou:u32
+    cooking:u32
+    syakou:u32
+}
+
+
+struct Inventory{
+    max_longsize:u32
+    max_youryou:u32
+    max_jyuuryou:u32
+    items:Vec<EntityId>
+    right_hand:Option<EntityId>
+    left_hand:Option<EntityId>
+    equipped:Option<EntityId> <active weapon selector>
+    armor:BTreeMap<String, EntityId>
+    quick_slots:[Option<QuickSlot>; 10]
+}
+
+struct HP{
+    max_hp:u32
+    hp:u32
+    update()
+}
+struct WoundTreatment {
+    bandages:BTreeMap<String,u64> <expires_at>
+    stopped:BTreeSet<String>
+}
+enum InjuryStage {
+    Healthy
+    Bleeding
+    HeavyBleeding
+    Severed
+}
+
+struct Pos{
+    x:i32
+    y:i32
+    z:i32
+}
+
+
+struct Status{
+    name:String <状態の名前>
+    enable:bool <その状態になるのが可能なオブジェクトかどうか>
+    value:u32 
+    exe:LuaHookRef <on_status>
+    update()
+}
+
+enum Entity{
+    Movable(MoveEntity)
+    Static(StaticEntity)
+    Item(ItemEntity)
+    --
+    id():EntityId
+    map_position():Option<Pos>
+    blocks_movement():bool
+    blocks_sight():bool
+    update()
+    render(ctx)
+}
+
+note right of Entity
+    全種類を Entity として検索・更新・描画する。
+    種類ごとの処理は各 variant の中身へ振り分ける。
+    野原・荒地も一マスごとの StaticEntity とする。
+    静止物も状態変化を処理でき、変化がなければ何もしない。
+    所持中の品は map_position が None となり、地面へ描画しない。
+    生成・削除はまとめて反映し、走査中の実体集合を壊さない。
+end note
+
+struct StaticEntity{
+    script:ScriptBinding
+    id:EntityId
+    role:StaticRole
+    name:String
+    blocks_movement:bool
+    blocks_sight:bool
+    destructible:bool
+    facilities:Vec<FacilityKind>
+    resources:Vec<ResourceAmount>
+    position:Pos
+
+    max_taikyudo:u32
+    taikyudo:u32
+
+    status:Vec<Status>
+
+    update()
+}
+
+struct ContainerEntry {
+    definition_id:String
+    quantity:u32
+}
+
+struct ItemEntity{
+    contents:Vec<ContainerEntry>
+    script:ScriptBinding
+    id:EntityId
+    kind:ItemKindId
+    name:String
+    location:ItemLocation
+    quantity:u32
+    resources:Vec<ResourceAmount>
+    
+    longsize:u32
+    youryou:u32
+    jyuuryou:u32
+
+    max_taikyudo:u32
+    taikyudo:u32
+
+    zairyou:Vec<Zairyou>
+
+    nouryoku:Vec<ItemProp>
+
+    status:Vec<Status>
+
+    update()
+
+}
+
+struct ItemDefinition {
+    contents:Vec<ContainerEntry>
+    throwable:Option<Throwable>
+    length_mm:u32
+    volume_ml:u32
+    mass_g:u32
+    stack_limit:u32
+    materials:Vec<Zairyou>
+    tool_functions:Vec<ItemProp>
+    initial_resources:Vec<ResourceAmount>
+    weapon:Option<WeaponDefinition>
+    armor:Option<ArmorDefinition>
+    use_effect:Option<UseDefinition>
+    nutrition:Option<Nutrition>
+}
+
+note right of ItemDefinition
+    EntityDefinition.data に入る item 固有の初期値。
+    共通定義と合わせて ItemEntity を生成する。
+    個体側は使用・損傷による状態の変化を保持する。
+    quantity は同じ状態の品だけをまとめる。
+    寸法・容量・重量は一個あたりの値とする。
+end note
+
+enum Zairyou{
+    wood
+    metal
+    cloth
+    leather
+    stone
+
+}
+
+enum ItemProp {
+    cutting
+    wood_cutting
+    hammering
+    drilling
+    fastening
+    prying
+    digging
+    sewing
+    cooking
+    butchering
+    metal_cutting
+    grinding
+    welding
+}
+
+
+struct MoveEntity {
+    script:ScriptBinding
+    controller:Controller
+    nutrition:Nutrition
+    carbohydrate_usage:u32
+    illness_turns:u32
+    illness_recovery_turns:u32
+    pneumonia_move_turns:u64
+    id:EntityId
+    kind:CreatureKind
+    position:Pos
+    hp:HP
+    body:BTreeMap<String, InjuryStage>
+    treatment:Box<WoundTreatment>
+    dominant_hand:Hand
+    next_move_turn:u64
+    stunned_until:u64
+    alert_position:Option<Pos>
+    alert_until:u64
+
+    sanity:i32(高いほど正気)
+    status:Vec<Status>
+
+    kinryoku:u32
+    tairyoku:u32
+    subayasa:u32
+    kiyousa:u32
+    tiryoku:u32
+    seishinryoku:u32
+
+    skill:Skill
+    psykick:Vec<Psykick>
+    inventory:Box<Inventory>
+    crafting:Option<CraftJob>
+    
+    update()
+}
+
+enum CreatureKind {
+    player
+    monster
+    animal
+    npc
+}
+
+enum StaticRole {
+    terrain
+    obstacle
+    facility
+}
+
+note right of StaticRole
+    地面・障害物・設備はいずれも StaticEntity。
+    野原・荒地は地面として移動を妨げない。
+    木・岩・壁は配置時に通行・遮蔽の性質を設定する。
+    破壊可能な物には耐久度と破壊後の変化を定義する。
+    例：木を伐採して削除し、同じ位置に木材を生成する。
+end note
+
+
+' EntityId / DefinitionId / RecipeId / SkillId は識別子。
+' ItemKindId は item の DefinitionId を指す。
+' 下記の型・ルールは実装前の設計案。
+
+enum ItemLocation {
+    ground(Pos)
+    carried_by(EntityId)
+}
+
+note right of ItemLocation
+    地面の位置か所持者のどちらか一つを持つ。
+    アイテム本体は Game.entities が所有し、
+    Inventory は ID で参照する。
+    拾う・置く際は両者を一緒に更新する。
+    大きさは mm、容量は ml、重量は g。
+end note
+
+struct Map {
+    width:i32
+    height:i32
+    depth:i32
+    cells:Vec<Cell>
+    contains(pos):bool
+    entities_at(pos):Vec<EntityId>
+    can_enter(pos, mover_id, entities):bool
+}
+
+struct Cell {
+    entity_ids:Vec<EntityId>
+}
+
+note right of Map
+    Map / Cell は配置を調べる索引で、地形本体を持たない。
+    例：一マスに「野原 + 木 + 落ちたアイテム」を配置する。
+    通行・遮蔽は配置された Entity の性質から判定する。
+    移動判定では移動者自身を除外し、マップ範囲も確認する。
+    描画順は地面 → 障害物・設備 → 品物 → 生物を基本とする。
+    位置の正本は Entity 側で、Cell は ID のみを参照する。
+    移動・拾得・生成・削除時には索引も同時に更新する。
+    所持中のアイテムは Cell に登録しない。
+end note
+
+enum Action {
+    move_to(Pos)
+    attack(EntityId)
+    use_item(EntityId)
+    pickup(EntityId)
+    drop(EntityId)
+    start_craft(RecipeId)
+    continue_craft
+    cancel_craft
+    wait_turn
+    quit
+}
+
+enum FacilityKind {
+    work_surface
+    clamping
+    anvil
+    forge_heat
+}
+
+struct Recipe {
+    id:RecipeId
+    name:String
+    ingredients:Vec<ItemAmount>
+    required_tools:Vec<ItemProp>
+    required_facilities:Vec<FacilityKind>
+    required_skills:Vec<SkillRequirement>
+    resource_costs:Vec<ResourceAmount>
+    outputs:Vec<ItemAmount>
+    work_turns:u32
+}
+
+struct ItemAmount {
+    kind:ItemKindId
+    quantity:u32
+}
+
+struct SkillRequirement {
+    skill:SkillId
+    minimum_level:u32
+}
+
+enum ResourceKind {
+    fuel
+    electricity
+    welding_material
+}
+
+struct ResourceAmount {
+    kind:ResourceKind
+    amount:u32
+}
+
+struct CraftJob {
+    recipe:RecipeId
+    completed_turns:u32
+    selected_ingredients:Vec<ItemSelection>
+    selected_tools:Vec<EntityId>
+    selected_facilities:Vec<EntityId>
+    selected_resources:Vec<ResourceSelection>
+}
+
+struct ItemSelection {
+    item:EntityId
+    quantity:u32
+}
+
+struct ResourceSelection {
+    source:EntityId
+    resource:ResourceAmount
+}
+
+struct CraftingSystem {
+    check_requirements(actor, recipe, game)
+    start(actor, recipe, game)
+    advance(actor, game)
+    cancel(actor, game)
+}
+
+note right of CraftingSystem
+    初期案：作業者の所持品から材料・道具を選ぶ。
+    設備は同じ z の同一マス・上下左右の隣接マスを参照。
+    健全な設備だけを利用し、加熱は燃料等の条件も確認する。
+    一つの道具・設備で複数の要求を満たしてよい。
+    材料として消費する品を、同じ作業の道具には選ばない。
+
+    開始時に対象 ID と必要量を選択する。
+    同じ材料・資源を複数回数えず、合計必要量を確認する。
+    進行時と完了時にも所持・距離・耐久・資源を再確認。
+    条件不足なら進行を止め、資源や材料は消費しない。
+    初期案は完了時に材料・資源の消費と生成を一括実行。
+    中止時は未消費のまま進捗を破棄する。
+    完成品は地面へ置く（所持容量超過を避ける）。
+    毎フレームではなく、時間を消費するターンに進める。
+    初期実装は木材1個・切削工具・作業面で3ターンの棍棒製作。
+    技能・資源条件のあるレシピは未対応エラー。
+end note
+
+note right of ItemProp
+    tool_skill.md の 13 種類に対応。
+    キャラクターの Skill と道具の機能は別。
+    鍛造 = hammering + anvil + forge_heat。
+    金属の種類への対応はレシピの材料条件で指定する。
+end note
+
+enum Controller {
+    input
+    lua
+}
+
+struct ScriptBinding {
+    definition_id:DefinitionId
+    state:SerializableValue
+    glyph:Option<String>
+}
+
+struct EntityDefinition {
+    schema_version:u32
+    id:DefinitionId
+    category:EntityCategory
+    common:CommonDefinition
+    data:DefinitionData
+    hooks:LuaHooks
+    initial_state:SerializableValue
+    interactions:Vec<InteractionDefinition>
+}
+
+struct InteractionDefinition {
+    id:String
+    name:String
+    when_state:Map<String, SerializableValue>
+    consumes_turn:bool
+}
+EntityDefinition *-- InteractionDefinition
+
+enum EntityCategory {
+    movable
+    static
+    item
+}
+
+enum DefinitionData {
+    Movable(MovableDefinition)
+    Static(StaticDefinition)
+    Item(ItemDefinition)
+}
+
+struct CommonDefinition {
+    name:String
+    appearance:Appearance
+    blocks_movement:bool
+    blocks_sight:bool
+    max_durability:Option<u32>
+    tags:Vec<String>
+}
+
+struct Appearance {
+    glyph:char
+    fg:RGB
+    bg:RGB
+    layer:u32
+}
+
+struct MovableDefinition {
+    role:CreatureKind
+    controller:Controller
+    faction:String
+    dominant_hand:Hand
+    hp:u32
+    body:Vec<String>
+    attributes:Attributes
+    skills:Skill
+    inventory:InventoryCapacity
+    sight_range:u32
+    attack:AttackDefinition
+    combat:CombatDefinition
+    sanity:i32
+    psykick:Vec<Psykick>
+    status:Vec<Status>
+    loadout:Vec<InitialItem>
+    needs:NeedsDefinition
+    controls:Map<Key, InputBinding>
+}
+
+struct Dice {
+    dice:u32
+    sides:u32
+    bonus:i32
+}
+
+struct CombatDefinition {
+    base_av:u32
+    dv_bonus:i32
+    accuracy_bonus:i32
+}
+
+struct AttackDefinition {
+    damage:Dice
+    range:u32
+    base_pv:u32
+    strength_cap:u32
+}
+
+struct InitialItem {
+    definition_id:DefinitionId
+    quantity:u32
+    equipped:bool
+    grip:Option<Grip>
+}
+
+struct WeaponDefinition {
+    hands:WeaponHands
+    two_hand_pv_bonus:u32
+    one_hand_range_penalty:u32
+    one_hand_accuracy_penalty:u32
+    critical_value:u32 <2D6閾値>
+    mode:WeaponMode
+    damage:Dice
+    range:u32
+    base_pv:u32
+    strength_cap:u32
+    accuracy_bonus:i32
+    ammo_definition_id:Option<DefinitionId>
+    ammo_per_attack:u32
+}
+
+enum QuickSlot {
+    Equipment(item:EntityId, grip:Grip)
+    Consumable(definition_id:String)
+}
+
+struct ArmorDefinition {
+    slot:String
+    av:u32
+    dv:i32
+}
+
+enum Hand {
+    Right
+    Left
+}
+enum Grip {
+    Right
+    Left
+    Both
+}
+enum WeaponHands {
+    One
+    Two
+    Either
+}
+enum WeaponMode {
+    melee
+    ranged
+}
+
+struct UseDefinition {
+    kind:String
+    status_id:Option<String>
+    need:Option<String>
+    amount:Option<u32>
+}
+
+struct NeedsDefinition {
+    hydration:NeedDefinition
+}
+
+struct Nutrition {
+    protein:u32
+    carbohydrate:u32
+    vitamin:u32
+}
+
+struct NeedDefinition {
+    max:u32
+    initial:u32
+}
+
+struct InputBinding {
+    type:String
+    dx:Option<i32>
+    dy:Option<i32>
+    dz:Option<i32>
+}
+
+struct StaticDefinition {
+    role:StaticRole
+    movement_cost:f32
+    facilities:Vec<FacilityKind>
+    initial_resources:Vec<ResourceAmount>
+    combat:CombatDefinition
+}
+
+struct LuaRuntime {
+    load_definitions(paths)
+    call_hook(binding, hook, snapshot, event):ScriptResult
+}
+
+struct LuaHookRef {
+    hook_name:String
+}
+
+struct LuaHooks {
+    on_spawn:Option<LuaFunction>
+    on_turn:Option<LuaFunction>
+    on_use:Option<LuaFunction>
+    on_damage:Option<LuaFunction>
+    on_destroy:Option<LuaFunction>
+    on_ability:Option<LuaFunction>
+    on_status:Option<LuaFunction>
+}
+
+struct ScriptResult {
+    state:Option<SerializableValue>
+    effects:Vec<ScriptEffect>
+    action:Option<Action>
+}
+
+note right of LuaRuntime
+    entity_lua.md と data/entity_templates/ が Lua 定義形式。
+    Entity enum を match して Lua の関数を呼ぶ。
+    Lua は行動・効果を返し、Rust が検証して update で適用する。
+    所持・位置・耐久・索引を Lua から直接書き換えない。
+    動物・モンスターは movable、地面・木・壁は static。
+    プレイヤーも movable で controller = input とする。
+    設定 ID と個体 ID を分け、state は個体ごとに保存する。
+    mlua / Lua 5.4 によるローダー・実行系を初回実装済み。
+    保存・製作・具体的な超能力等の残作業は implementation.md を参照。
+end note
+
+
+Game --> MoveEntity : player_id で参照
+Game *-- Entity
+Game *-- Map
+Game *-- Recipe
+Game *-- EntityDefinition
+Game *-- LuaRuntime
+Game --> Action
+Game ..> CraftingSystem : update で使用
+Entity ..|> Update
+Entity --> MoveEntity
+Entity --> ItemEntity
+Entity --> StaticEntity
+MoveEntity *-- Inventory
+MoveEntity *-- CraftJob
+MoveEntity *-- HP
+MoveEntity *-- Status
+MoveEntity --> CreatureKind
+Inventory --> ItemEntity : ID で参照
+ItemEntity *-- ItemLocation
+ItemEntity --> ItemProp
+ItemEntity --> Zairyou
+ItemEntity --> EntityDefinition : kind で参照
+ItemDefinition --> ItemProp
+ItemDefinition --> Zairyou
+ItemEntity *-- ResourceAmount
+StaticEntity --> FacilityKind
+StaticEntity --> StaticRole
+StaticEntity *-- ResourceAmount
+Map *-- Cell
+Cell --> Entity : ID で参照
+Recipe *-- ItemAmount : 材料・生成物
+Recipe --> ItemProp : 要求する道具機能
+Recipe --> FacilityKind : 要求する設備条件
+Recipe *-- SkillRequirement
+Recipe *-- ResourceAmount : 消費資源
+ResourceAmount --> ResourceKind
+CraftJob --> Recipe : ID で参照
+CraftJob *-- ItemSelection
+CraftJob *-- ResourceSelection
+CraftJob --> ItemEntity : 材料・道具の ID
+CraftJob --> StaticEntity : 設備の ID
+ResourceSelection *-- ResourceAmount
+CraftingSystem ..> CraftJob
+CraftingSystem ..> Recipe
+
+Game ..> ScriptResult : 検証して適用
+MoveEntity --> Controller
+MoveEntity *-- ScriptBinding
+StaticEntity *-- ScriptBinding
+ItemEntity *-- ScriptBinding
+ScriptBinding --> EntityDefinition : 定義 ID で参照
+EntityDefinition --> EntityCategory
+EntityDefinition *-- CommonDefinition
+CommonDefinition *-- Appearance
+EntityDefinition *-- DefinitionData
+EntityDefinition *-- LuaHooks
+DefinitionData --> MovableDefinition
+DefinitionData --> StaticDefinition
+DefinitionData --> ItemDefinition
+LuaRuntime ..> LuaHooks
+LuaRuntime ..> ScriptResult
+Psykick --> LuaHookRef
+MoveEntity *-- InjuryStage
+MoveEntity *-- WoundTreatment
+Status --> LuaHookRef
+MovableDefinition *-- InitialItem
+MovableDefinition *-- NeedsDefinition
+MovableDefinition *-- InputBinding
+NeedsDefinition *-- NeedDefinition
+ItemDefinition *-- WeaponDefinition
+ItemDefinition *-- ArmorDefinition
+ItemDefinition *-- UseDefinition
+WeaponDefinition --> WeaponMode
+ItemDefinition *-- Nutrition : 食料一個あたり
+MoveEntity *-- Nutrition : 個体の蓄積値（初期値 50・上限100）
+
+MovableDefinition *-- AttackDefinition
+MovableDefinition *-- CombatDefinition
+StaticDefinition *-- CombatDefinition
+WeaponDefinition *-- Dice
+AttackDefinition *-- Dice
+
+@enduml

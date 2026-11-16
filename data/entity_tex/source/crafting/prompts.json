@@ -1,0 +1,77 @@
+{
+  "mode": "built-in image_gen",
+  "use_case": "stylized-concept",
+  "shared_prompt": "Use case: stylized-concept. Asset type: one production game item sprite for a Rust roguelike. Create ORIGINAL low-resolution pixel art authored on a 32x32 logical pixel grid, displayed enlarged with exact crisp square pixels. Each mark belongs to that grid. Single isolated object centered, entirety fits inside a 26x26 logical pixel bounding box with at least 3 pixels transparent padding on all sides. 3/4 slightly top-down inventory view; diagonal tools may point bottom-left to top-right. Worn utilitarian post-apocalyptic look, restrained highlights, strong recognizable silhouette, a dark outline, compact 4-7 colors, no tiny noise. Real transparent background and transparent empty padding, no cast shadow, no floor, no checkerboard, no text, no numbers, no border, no extra objects. Palette ONLY these Ash & Rust colors: #0E1113 #1A2023 #2B3335 #465256 #718080 #A5AFAB #D0CDBB #F0E6CC #302A24 #534133 #7A5B40 #A8875B #572C27 #8A4333 #B96340 #E78B4B #1E302A #3C5140 #64704B #99A06B #405039 #7B8D45 #B7C878 #DCE3AA #192E3B #34586A #5B8991 #A8CCCA #49232D #A33E47 #E5BD63 #E5F3DF. Subject: ",
+  "entries": [
+    {
+      "id": "item.hand_drill",
+      "subject": "a vintage manual hand crank drill: silver drill bit, dark steel gear wheel and crank, worn wooden handle; distinctive crank silhouette",
+      "source": "hand_drill.png"
+    },
+    {
+      "id": "item.metal_saw",
+      "subject": "a metal-cutting hacksaw: thin steel rectangular U-shaped frame with a taut fine toothed blade and a worn rust brown grip",
+      "source": "metal_saw.png"
+    },
+    {
+      "id": "item.metal_file",
+      "subject": "a metal file: long rectangular dark steel rasp blade with two simple diagonal grooves, short warm wooden handle; one object",
+      "source": "metal_file.png"
+    },
+    {
+      "id": "item.forging_hammer",
+      "subject": "a heavy metalworking hammer: broad square dark iron head and short sturdy brown wooden handle, distinguishable from a small claw hammer",
+      "source": "forging_hammer.png"
+    },
+    {
+      "id": "item.sewing_kit",
+      "subject": "a small open worn olive sewing pouch holding a clearly visible silver needle and tiny folded fabric; compact single kit",
+      "source": "sewing_kit.png"
+    },
+    {
+      "id": "item.cooking_kit",
+      "subject": "a compact portable camping cooking kit: dull steel lidded saucepan above a tiny dark olive stove, unlit, no flame",
+      "source": "cooking_kit.png"
+    },
+    {
+      "id": "item.wood_saw",
+      "subject": "a carpenters hand saw: broad triangular steel blade with coarse teeth and a warm wooden closed handle",
+      "source": "wood_saw.png"
+    },
+    {
+      "id": "item.metal_stock",
+      "subject": "a small bundle of three short rectangular dark steel bars stacked offset, no bullets or cartridges",
+      "source": "metal_stock.png"
+    },
+    {
+      "id": "item.cloth",
+      "subject": "one neatly folded square of clean cream linen fabric with one visible fold, simple solid readable silhouette",
+      "source": "cloth.png"
+    },
+    {
+      "id": "item.leather_piece",
+      "subject": "two irregular cut pieces of russet brown leather stacked slightly offset, broad simple shapes, no stitching, no armor",
+      "source": "leather_piece.png"
+    },
+    {
+      "id": "item.thread",
+      "subject": "a single wooden spool of cream thread with a short loose curling tail, visible wooden spool ends",
+      "source": "thread.png"
+    },
+    {
+      "id": "item.charcoal",
+      "subject": "a small pile of three chunky irregular charcoal lumps, near-black dark gray with restrained gray facets, no fire, no glow",
+      "source": "charcoal.png"
+    },
+    {
+      "id": "item.wood_handle",
+      "subject": "one smoothly carved plain warm wooden tool handle, slightly curved tapered shape with a thicker grip; no head attached, no tool blade",
+      "source": "wood_handle.png"
+    },
+    {
+      "id": "item.crafting_storage",
+      "subject": "one closed sturdy rectangular workshop storage crate, dark brown wooden slats with gray metal corner brackets, olive green lid and central latch; distinguish from ornate treasure chest, no tools outside",
+      "source": "crafting_storage.png"
+    }
+  ]
+}

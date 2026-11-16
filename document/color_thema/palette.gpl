@@ -1,0 +1,36 @@
+GIMP Palette
+Name: Ash & Rust 32
+Columns: 8
+# Original palette for My Rogue
+ 14  17  19	void
+ 26  32  35	soot
+ 43  51  53	charcoal
+ 70  82  86	steel
+113 128 128	ash
+165 175 171	fog
+208 205 187	bone
+240 230 204	linen
+ 48  42  36	peat
+ 83  65  51	bark
+122  91  64	timber
+168 135  91	dust
+ 87  44  39	dark_rust
+138  67  51	rust
+185  99  64	clay
+231 139  75	ember
+ 30  48  42	forest
+ 60  81  64	moss
+100 112  75	olive
+153 160 107	dry_grass
+ 64  80  57	rot
+123 141  69	infected
+183 200 120	bile
+220 227 170	spore
+ 25  46  59	deep_water
+ 52  88 106	slate_blue
+ 91 137 145	verdigris
+168 204 202	ice
+ 73  35  45	dried_blood
+163  62  71	blood
+229 189  99	warning
+229 243 223	flash

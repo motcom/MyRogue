@@ -1,0 +1,51 @@
+{
+  "description": "Dedicated crafting items, generated with the built-in image generation tool. Sources retain transparency; the importer samples to 32x32, remaps to Ash & Rust 32, and thresholds alpha to 0/255.",
+  "tile_size": [
+    32,
+    32
+  ],
+  "tiles": {
+    "item.hand_drill": {
+      "source": "source/crafting/hand_drill.png"
+    },
+    "item.metal_saw": {
+      "source": "source/crafting/metal_saw.png"
+    },
+    "item.metal_file": {
+      "source": "source/crafting/metal_file.png"
+    },
+    "item.forging_hammer": {
+      "source": "source/crafting/forging_hammer.png"
+    },
+    "item.sewing_kit": {
+      "source": "source/crafting/sewing_kit.png"
+    },
+    "item.cooking_kit": {
+      "source": "source/crafting/cooking_kit.png"
+    },
+    "item.wood_saw": {
+      "source": "source/crafting/wood_saw.png"
+    },
+    "item.metal_stock": {
+      "source": "source/crafting/metal_stock.png"
+    },
+    "item.cloth": {
+      "source": "source/crafting/cloth.png"
+    },
+    "item.leather_piece": {
+      "source": "source/crafting/leather_piece.png"
+    },
+    "item.thread": {
+      "source": "source/crafting/thread.png"
+    },
+    "item.charcoal": {
+      "source": "source/crafting/charcoal.png"
+    },
+    "item.wood_handle": {
+      "source": "source/crafting/wood_handle.png"
+    },
+    "item.crafting_storage": {
+      "source": "source/crafting/crafting_storage.png"
+    }
+  }
+}

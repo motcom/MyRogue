@@ -1,0 +1,35 @@
+-- 参照先を完結させるための弾薬・素材。
+-- 数値はゲーム用の仮設定。Rust 側のホスト API は未接続。
+return {
+    schema_version = 2,
+    id = "item.wood",
+    category = "item",
+    common = {
+        name = "木材",
+        description = "木を破壊すると得られる素材。棍棒や木柄などの制作に使う。",
+        appearance = {
+            glyph = "/",
+            fg = { 160, 130, 80 },
+            bg = { 0, 0, 0 },
+            layer = 20,
+        },
+        collision = {
+            movement = false,
+            sight = false,
+        },
+        durability = false,
+        tags = { "material" },
+    },
+    initial_state = {},
+    item = {
+        length_mm = 700,
+        volume_ml = 2000,
+        mass_g = 1000,
+        stack_limit = 10,
+        materials = { "wood" },
+        tool_functions = {  },
+        resources = {},
+    },
+    hooks = {
+    },
+}

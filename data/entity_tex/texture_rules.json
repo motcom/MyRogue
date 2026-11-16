@@ -1,0 +1,13 @@
+{
+  "seed": 8317,
+  "sets": {
+    "terrain.road": {
+      "connect_group": "road",
+      "background": "terrain.field",
+      "variants": ["static/terrain.road.png"]
+    },
+    "terrain.field": {"variants": ["static/terrain.field.png"]},
+    "terrain.pond": {"variants": ["static/terrain.pond.png"]},
+    "terrain.wasteland": {"variants": ["static/terrain.wasteland.png"]}
+  }
+}

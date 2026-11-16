@@ -1,0 +1,1089 @@
+{
+  "tile_size": [
+    32,
+    32
+  ],
+  "palette": "../../document/color_thema/palette.json",
+  "atlas": "atlas.png",
+  "atlas_columns": 8,
+  "entries": [
+    {
+      "id": "player.survivor",
+      "name": "生存者",
+      "category": "movable",
+      "definition": "data/entity_templates/player.lua",
+      "file": "movable/player.survivor.png",
+      "atlas_cell": [
+        0,
+        0
+      ],
+      "opaque_pixels": 519,
+      "transparent_pixels": 505
+    },
+    {
+      "id": "monster.ghoul_worker",
+      "name": "グール ワーカー",
+      "category": "movable",
+      "definition": "data/entity_templates/movable/ghoul_worker.lua",
+      "file": "movable/monster.ghoul_worker.png",
+      "atlas_cell": [
+        1,
+        0
+      ],
+      "opaque_pixels": 429,
+      "transparent_pixels": 595
+    },
+    {
+      "id": "monster.ghoul_warrior",
+      "name": "グール ウォーリア",
+      "category": "movable",
+      "definition": "data/entity_templates/movable/ghoul_warrior.lua",
+      "file": "movable/monster.ghoul_warrior.png",
+      "atlas_cell": [
+        2,
+        0
+      ],
+      "opaque_pixels": 497,
+      "transparent_pixels": 527
+    },
+    {
+      "id": "monster.ghoul_archer",
+      "name": "グール アーチャー",
+      "category": "movable",
+      "definition": "data/entity_templates/movable/ghoul_archer.lua",
+      "file": "movable/monster.ghoul_archer.png",
+      "atlas_cell": [
+        3,
+        0
+      ],
+      "opaque_pixels": 437,
+      "transparent_pixels": 587
+    },
+    {
+      "id": "terrain.field",
+      "name": "野原",
+      "category": "static",
+      "definition": "data/entity_templates/static.lua",
+      "file": "static/terrain.field.png",
+      "atlas_cell": [
+        4,
+        0
+      ],
+      "opaque_pixels": 1024,
+      "transparent_pixels": 0,
+      "source_override": "source/simple_terrain/terrain.field-v2.png",
+      "palette_ids": [
+        "forest",
+        "moss",
+        "olive"
+      ]
+    },
+    {
+      "id": "terrain.road",
+      "name": "道",
+      "category": "static",
+      "definition": "data/entity_templates/static/road.lua",
+      "file": "static/terrain.road.png",
+      "atlas_cell": [
+        5,
+        0
+      ],
+      "opaque_pixels": 1024,
+      "transparent_pixels": 0,
+      "source_override": "source/simple_terrain/terrain.road-v2.png",
+      "palette_ids": [
+        "peat",
+        "bark",
+        "timber"
+      ]
+    },
+    {
+      "id": "obstacle.stone_wall",
+      "name": "石壁",
+      "category": "static",
+      "definition": "data/entity_templates/static/stone_wall.lua",
+      "file": "static/obstacle.stone_wall.png",
+      "atlas_cell": [
+        6,
+        0
+      ],
+      "opaque_pixels": 1024,
+      "transparent_pixels": 0,
+      "source_override": "source/simple_terrain/obstacle.stone_wall-v2.png",
+      "palette_ids": [
+        "charcoal",
+        "steel",
+        "ash"
+      ]
+    },
+    {
+      "id": "obstacle.tree",
+      "name": "木",
+      "category": "static",
+      "definition": "data/entity_templates/static/tree.lua",
+      "file": "static/obstacle.tree.png",
+      "atlas_cell": [
+        7,
+        0
+      ],
+      "opaque_pixels": 575,
+      "transparent_pixels": 449
+    },
+    {
+      "id": "obstacle.wooden_door",
+      "name": "木の扉",
+      "category": "static",
+      "definition": "data/entity_templates/static/wooden_door.lua",
+      "file": "static/obstacle.wooden_door.png",
+      "atlas_cell": [
+        0,
+        1
+      ],
+      "opaque_pixels": 679,
+      "transparent_pixels": 345
+    },
+    {
+      "id": "terrain.pond",
+      "name": "池",
+      "category": "static",
+      "definition": "data/entity_templates/static/pond.lua",
+      "file": "static/terrain.pond.png",
+      "atlas_cell": [
+        1,
+        1
+      ],
+      "opaque_pixels": 1024,
+      "transparent_pixels": 0,
+      "source_override": "source/simple_terrain/terrain.pond-v2.png",
+      "palette_ids": [
+        "deep_water",
+        "slate_blue",
+        "verdigris"
+      ]
+    },
+    {
+      "id": "item.knife",
+      "name": "ナイフ",
+      "category": "item",
+      "definition": "data/entity_templates/item.lua",
+      "file": "item/item.knife.png",
+      "atlas_cell": [
+        2,
+        1
+      ],
+      "opaque_pixels": 188,
+      "transparent_pixels": 836
+    },
+    {
+      "id": "item.club",
+      "name": "棍棒",
+      "category": "item",
+      "definition": "data/entity_templates/item/club.lua",
+      "file": "item/item.club.png",
+      "atlas_cell": [
+        3,
+        1
+      ],
+      "opaque_pixels": 257,
+      "transparent_pixels": 767
+    },
+    {
+      "id": "item.glock",
+      "name": "グロック",
+      "category": "item",
+      "definition": "data/entity_templates/item/glock.lua",
+      "file": "item/item.glock.png",
+      "atlas_cell": [
+        4,
+        1
+      ],
+      "opaque_pixels": 359,
+      "transparent_pixels": 665
+    },
+    {
+      "id": "item.crossbow",
+      "name": "クロスボウ",
+      "category": "item",
+      "definition": "data/entity_templates/item/crossbow.lua",
+      "file": "item/item.crossbow.png",
+      "atlas_cell": [
+        5,
+        1
+      ],
+      "opaque_pixels": 410,
+      "transparent_pixels": 614
+    },
+    {
+      "id": "item.sks",
+      "name": "SKS",
+      "category": "item",
+      "definition": "data/entity_templates/item/sks.lua",
+      "file": "item/item.sks.png",
+      "atlas_cell": [
+        6,
+        1
+      ],
+      "opaque_pixels": 220,
+      "transparent_pixels": 804
+    },
+    {
+      "id": "item.bandage",
+      "name": "包帯",
+      "category": "item",
+      "definition": "data/entity_templates/item/bandage.lua",
+      "file": "item/item.bandage.png",
+      "atlas_cell": [
+        7,
+        1
+      ],
+      "opaque_pixels": 379,
+      "transparent_pixels": 645
+    },
+    {
+      "id": "item.disinfectant",
+      "name": "消毒薬",
+      "category": "item",
+      "definition": "data/entity_templates/item/disinfectant.lua",
+      "file": "item/item.disinfectant.png",
+      "atlas_cell": [
+        0,
+        2
+      ],
+      "opaque_pixels": 398,
+      "transparent_pixels": 626
+    },
+    {
+      "id": "item.syringe",
+      "name": "注射器",
+      "category": "item",
+      "definition": "data/entity_templates/item/syringe.lua",
+      "file": "item/item.syringe.png",
+      "atlas_cell": [
+        1,
+        2
+      ],
+      "opaque_pixels": 227,
+      "transparent_pixels": 797
+    },
+    {
+      "id": "item.bread",
+      "name": "パン",
+      "category": "item",
+      "definition": "data/entity_templates/item/bread.lua",
+      "file": "item/item.bread.png",
+      "atlas_cell": [
+        2,
+        2
+      ],
+      "opaque_pixels": 451,
+      "transparent_pixels": 573
+    },
+    {
+      "id": "item.mineral_water",
+      "name": "ミネラルウォーター",
+      "category": "item",
+      "definition": "data/entity_templates/item/mineral_water.lua",
+      "file": "item/item.mineral_water.png",
+      "atlas_cell": [
+        3,
+        2
+      ],
+      "opaque_pixels": 329,
+      "transparent_pixels": 695
+    },
+    {
+      "id": "ammo.pistol",
+      "name": "拳銃弾",
+      "category": "item",
+      "definition": "data/entity_templates/item/ammo_pistol.lua",
+      "file": "item/ammo.pistol.png",
+      "atlas_cell": [
+        4,
+        2
+      ],
+      "opaque_pixels": 351,
+      "transparent_pixels": 673
+    },
+    {
+      "id": "ammo.bolt",
+      "name": "クロスボウボルト",
+      "category": "item",
+      "definition": "data/entity_templates/item/ammo_bolt.lua",
+      "file": "item/ammo.bolt.png",
+      "atlas_cell": [
+        5,
+        2
+      ],
+      "opaque_pixels": 259,
+      "transparent_pixels": 765
+    },
+    {
+      "id": "ammo.rifle",
+      "name": "ライフル弾",
+      "category": "item",
+      "definition": "data/entity_templates/item/ammo_rifle.lua",
+      "file": "item/ammo.rifle.png",
+      "atlas_cell": [
+        6,
+        2
+      ],
+      "opaque_pixels": 458,
+      "transparent_pixels": 566
+    },
+    {
+      "id": "item.wood",
+      "name": "木材",
+      "category": "item",
+      "definition": "data/entity_templates/item/wood.lua",
+      "file": "item/item.wood.png",
+      "atlas_cell": [
+        7,
+        2
+      ],
+      "opaque_pixels": 508,
+      "transparent_pixels": 516
+    },
+    {
+      "id": "item.treasure_chest",
+      "name": "宝箱",
+      "category": "item",
+      "definition": "data/entity_templates/item/treasure_chest.lua",
+      "file": "item/item.treasure_chest.png",
+      "atlas_cell": [
+        0,
+        3
+      ],
+      "opaque_pixels": 640,
+      "transparent_pixels": 384
+    },
+    {
+      "id": "facility.workbench",
+      "name": "万力付き作業台",
+      "category": "static",
+      "definition": "data/entity_templates/static/workbench.lua",
+      "file": "static/facility.workbench.png",
+      "atlas_cell": [
+        1,
+        3
+      ],
+      "opaque_pixels": 516,
+      "transparent_pixels": 508
+    },
+    {
+      "id": "item.hammer",
+      "name": "ハンマー",
+      "category": "item",
+      "definition": "data/entity_templates/item/hammer.lua",
+      "file": "item/item.hammer.png",
+      "atlas_cell": [
+        2,
+        3
+      ],
+      "opaque_pixels": 259,
+      "transparent_pixels": 765
+    },
+    {
+      "id": "item.leather_armor",
+      "name": "革の鎧",
+      "category": "item",
+      "definition": "data/entity_templates/item/leather_armor.lua",
+      "file": "item/item.leather_armor.png",
+      "atlas_cell": [
+        3,
+        3
+      ],
+      "opaque_pixels": 676,
+      "transparent_pixels": 348
+    },
+    {
+      "id": "item.short_sword",
+      "name": "ショートソード",
+      "category": "item",
+      "definition": "data/entity_templates/item/short_sword.lua",
+      "file": "item/item.short_sword.png",
+      "atlas_cell": [
+        4,
+        3
+      ],
+      "opaque_pixels": 210,
+      "transparent_pixels": 814
+    },
+    {
+      "id": "item.long_sword",
+      "name": "ロングソード",
+      "category": "item",
+      "definition": "data/entity_templates/item/long_sword.lua",
+      "file": "item/item.long_sword.png",
+      "atlas_cell": [
+        5,
+        3
+      ],
+      "opaque_pixels": 190,
+      "transparent_pixels": 834
+    },
+    {
+      "id": "item.bastard_sword",
+      "name": "バスタードソード",
+      "category": "item",
+      "definition": "data/entity_templates/item/bastard_sword.lua",
+      "file": "item/item.bastard_sword.png",
+      "atlas_cell": [
+        6,
+        3
+      ],
+      "opaque_pixels": 303,
+      "transparent_pixels": 721
+    },
+    {
+      "id": "item.mace",
+      "name": "メイス",
+      "category": "item",
+      "definition": "data/entity_templates/item/mace.lua",
+      "file": "item/item.mace.png",
+      "atlas_cell": [
+        7,
+        3
+      ],
+      "opaque_pixels": 277,
+      "transparent_pixels": 747
+    },
+    {
+      "id": "item.spear",
+      "name": "槍",
+      "category": "item",
+      "definition": "data/entity_templates/item/spear.lua",
+      "file": "item/item.spear.png",
+      "atlas_cell": [
+        0,
+        4
+      ],
+      "opaque_pixels": 159,
+      "transparent_pixels": 865
+    },
+    {
+      "id": "item.cleaver",
+      "name": "大鉈",
+      "category": "item",
+      "definition": "data/entity_templates/item/cleaver.lua",
+      "file": "item/item.cleaver.png",
+      "atlas_cell": [
+        1,
+        4
+      ],
+      "opaque_pixels": 314,
+      "transparent_pixels": 710
+    },
+    {
+      "id": "item.ak",
+      "name": "AK",
+      "category": "item",
+      "definition": "data/entity_templates/item/ak.lua",
+      "file": "item/item.ak.png",
+      "atlas_cell": [
+        2,
+        4
+      ],
+      "opaque_pixels": 306,
+      "transparent_pixels": 718
+    },
+    {
+      "id": "item.m16",
+      "name": "M16",
+      "category": "item",
+      "definition": "data/entity_templates/item/m16.lua",
+      "file": "item/item.m16.png",
+      "atlas_cell": [
+        3,
+        4
+      ],
+      "opaque_pixels": 316,
+      "transparent_pixels": 708
+    },
+    {
+      "id": "item.apple",
+      "name": "りんご",
+      "category": "item",
+      "definition": "data/entity_templates/item/apple.lua",
+      "file": "item/item.apple.png",
+      "atlas_cell": [
+        4,
+        4
+      ],
+      "opaque_pixels": 389,
+      "transparent_pixels": 635
+    },
+    {
+      "id": "item.raw_meat",
+      "name": "肉(生)",
+      "category": "item",
+      "definition": "data/entity_templates/item/raw_meat.lua",
+      "file": "item/item.raw_meat.png",
+      "atlas_cell": [
+        5,
+        4
+      ],
+      "opaque_pixels": 478,
+      "transparent_pixels": 546
+    },
+    {
+      "id": "item.cooked_meat",
+      "name": "肉(焼き)",
+      "category": "item",
+      "definition": "data/entity_templates/item/cooked_meat.lua",
+      "file": "item/item.cooked_meat.png",
+      "atlas_cell": [
+        6,
+        4
+      ],
+      "opaque_pixels": 404,
+      "transparent_pixels": 620
+    },
+    {
+      "id": "item.rotten_meat",
+      "name": "肉（腐り）",
+      "category": "item",
+      "definition": "data/entity_templates/item/rotten_meat.lua",
+      "file": "item/item.rotten_meat.png",
+      "atlas_cell": [
+        7,
+        4
+      ],
+      "opaque_pixels": 417,
+      "transparent_pixels": 607
+    },
+    {
+      "id": "item.carrot",
+      "name": "人参",
+      "category": "item",
+      "definition": "data/entity_templates/item/carrot.lua",
+      "file": "item/item.carrot.png",
+      "atlas_cell": [
+        0,
+        5
+      ],
+      "opaque_pixels": 343,
+      "transparent_pixels": 681
+    },
+    {
+      "id": "item.cabbage",
+      "name": "キャベツ",
+      "category": "item",
+      "definition": "data/entity_templates/item/cabbage.lua",
+      "file": "item/item.cabbage.png",
+      "atlas_cell": [
+        1,
+        5
+      ],
+      "opaque_pixels": 638,
+      "transparent_pixels": 386
+    },
+    {
+      "id": "item.dirty_water",
+      "name": "水（汚染）",
+      "category": "item",
+      "definition": "data/entity_templates/item/dirty_water.lua",
+      "file": "item/item.dirty_water.png",
+      "atlas_cell": [
+        2,
+        5
+      ],
+      "opaque_pixels": 442,
+      "transparent_pixels": 582
+    },
+    {
+      "id": "item.clean_water",
+      "name": "水（清潔）",
+      "category": "item",
+      "definition": "data/entity_templates/item/clean_water.lua",
+      "file": "item/item.clean_water.png",
+      "atlas_cell": [
+        3,
+        5
+      ],
+      "opaque_pixels": 380,
+      "transparent_pixels": 644
+    },
+    {
+      "id": "item.vitamins",
+      "name": "ビタミン剤",
+      "category": "item",
+      "definition": "data/entity_templates/item/vitamins.lua",
+      "file": "item/item.vitamins.png",
+      "atlas_cell": [
+        4,
+        5
+      ],
+      "opaque_pixels": 485,
+      "transparent_pixels": 539
+    },
+    {
+      "id": "item.frag_grenade",
+      "name": "爆発手榴弾",
+      "category": "item",
+      "definition": "data/entity_templates/item/frag_grenade.lua",
+      "file": "item/item.frag_grenade.png",
+      "atlas_cell": [
+        5,
+        5
+      ],
+      "opaque_pixels": 466,
+      "transparent_pixels": 558
+    },
+    {
+      "id": "item.flash_grenade",
+      "name": "閃光手榴弾",
+      "category": "item",
+      "definition": "data/entity_templates/item/flash_grenade.lua",
+      "file": "item/item.flash_grenade.png",
+      "atlas_cell": [
+        6,
+        5
+      ],
+      "opaque_pixels": 367,
+      "transparent_pixels": 657
+    },
+    {
+      "id": "terrain.wasteland",
+      "name": "荒地",
+      "category": "static",
+      "definition": "data/entity_templates/static/wasteland.lua",
+      "file": "static/terrain.wasteland.png",
+      "atlas_cell": [
+        7,
+        5
+      ],
+      "opaque_pixels": 1024,
+      "transparent_pixels": 0,
+      "source_override": "source/simple_terrain/terrain.wasteland-v2.png",
+      "palette_ids": [
+        "soot",
+        "peat",
+        "bark"
+      ]
+    },
+    {
+      "id": "obstacle.table",
+      "name": "テーブル",
+      "category": "static",
+      "definition": "data/entity_templates/static/table.lua",
+      "file": "static/obstacle.table.png",
+      "atlas_cell": [
+        0,
+        6
+      ],
+      "opaque_pixels": 487,
+      "transparent_pixels": 537
+    },
+    {
+      "id": "obstacle.chair",
+      "name": "椅子",
+      "category": "static",
+      "definition": "data/entity_templates/static/chair.lua",
+      "file": "static/obstacle.chair.png",
+      "atlas_cell": [
+        1,
+        6
+      ],
+      "opaque_pixels": 440,
+      "transparent_pixels": 584
+    },
+    {
+      "id": "obstacle.wooden_wall",
+      "name": "木の壁",
+      "category": "static",
+      "definition": "data/entity_templates/static/wooden_wall.lua",
+      "file": "static/obstacle.wooden_wall.png",
+      "atlas_cell": [
+        2,
+        6
+      ],
+      "opaque_pixels": 1024,
+      "transparent_pixels": 0,
+      "source_override": "source/simple_terrain/obstacle.wooden_wall-v2.png",
+      "palette_ids": [
+        "peat",
+        "bark",
+        "timber"
+      ]
+    },
+    {
+      "id": "obstacle.conifer",
+      "name": "針葉樹",
+      "category": "static",
+      "definition": "data/entity_templates/static/conifer.lua",
+      "file": "static/obstacle.conifer.png",
+      "atlas_cell": [
+        3,
+        6
+      ],
+      "opaque_pixels": 439,
+      "transparent_pixels": 585
+    },
+    {
+      "id": "obstacle.hedge",
+      "name": "生垣",
+      "category": "static",
+      "definition": "data/entity_templates/static/hedge.lua",
+      "file": "static/obstacle.hedge.png",
+      "atlas_cell": [
+        4,
+        6
+      ],
+      "opaque_pixels": 623,
+      "transparent_pixels": 401
+    },
+    {
+      "id": "obstacle.fence",
+      "name": "柵",
+      "category": "static",
+      "definition": "data/entity_templates/static/fence.lua",
+      "file": "static/obstacle.fence.png",
+      "atlas_cell": [
+        5,
+        6
+      ],
+      "opaque_pixels": 428,
+      "transparent_pixels": 596
+    },
+    {
+      "id": "obstacle.lamp",
+      "name": "ランプ",
+      "category": "static",
+      "definition": "data/entity_templates/static/lamp.lua",
+      "file": "static/obstacle.lamp.png",
+      "atlas_cell": [
+        6,
+        6
+      ],
+      "opaque_pixels": 400,
+      "transparent_pixels": 624
+    },
+    {
+      "id": "item.shield",
+      "name": "盾",
+      "category": "item",
+      "definition": "data/entity_templates/item/shield.lua",
+      "file": "item/item.shield.png",
+      "atlas_cell": [
+        7,
+        6
+      ],
+      "opaque_pixels": 657,
+      "transparent_pixels": 367
+    },
+    {
+      "id": "monster.ghoul_runner",
+      "name": "グール・ランナー",
+      "category": "movable",
+      "definition": "data/entity_templates/movable/ghoul_runner.lua",
+      "file": "movable/monster.ghoul_runner.png",
+      "atlas_cell": [
+        0,
+        7
+      ],
+      "opaque_pixels": 423,
+      "transparent_pixels": 601
+    },
+    {
+      "id": "monster.ghoul_butcher",
+      "name": "グール・ブッチャー",
+      "category": "movable",
+      "definition": "data/entity_templates/movable/ghoul_butcher.lua",
+      "file": "movable/monster.ghoul_butcher.png",
+      "atlas_cell": [
+        1,
+        7
+      ],
+      "opaque_pixels": 636,
+      "transparent_pixels": 388
+    },
+    {
+      "id": "monster.ghoul_guard",
+      "name": "グール・ガード",
+      "category": "movable",
+      "definition": "data/entity_templates/movable/ghoul_guard.lua",
+      "file": "movable/monster.ghoul_guard.png",
+      "atlas_cell": [
+        2,
+        7
+      ],
+      "opaque_pixels": 548,
+      "transparent_pixels": 476
+    },
+    {
+      "id": "monster.ghoul_howler",
+      "name": "グール・ハウラー",
+      "category": "movable",
+      "definition": "data/entity_templates/movable/ghoul_howler.lua",
+      "file": "movable/monster.ghoul_howler.png",
+      "atlas_cell": [
+        3,
+        7
+      ],
+      "opaque_pixels": 434,
+      "transparent_pixels": 590
+    },
+    {
+      "id": "monster.ghoul_scavenger",
+      "name": "グール・スカベンジャー",
+      "category": "movable",
+      "definition": "data/entity_templates/movable/ghoul_scavenger.lua",
+      "file": "movable/monster.ghoul_scavenger.png",
+      "atlas_cell": [
+        4,
+        7
+      ],
+      "opaque_pixels": 558,
+      "transparent_pixels": 466
+    },
+    {
+      "id": "monster.ghoul_stalker",
+      "name": "グール・ストーカー",
+      "category": "movable",
+      "definition": "data/entity_templates/movable/ghoul_stalker.lua",
+      "file": "movable/monster.ghoul_stalker.png",
+      "atlas_cell": [
+        5,
+        7
+      ],
+      "opaque_pixels": 480,
+      "transparent_pixels": 544
+    },
+    {
+      "id": "monster.ghoul_brute",
+      "name": "グール・ブルート",
+      "category": "movable",
+      "definition": "data/entity_templates/movable/ghoul_brute.lua",
+      "file": "movable/monster.ghoul_brute.png",
+      "atlas_cell": [
+        6,
+        7
+      ],
+      "opaque_pixels": 683,
+      "transparent_pixels": 341
+    },
+    {
+      "id": "monster.ghoul_rifleman",
+      "name": "グール・ライフルマン",
+      "category": "movable",
+      "definition": "data/entity_templates/movable/ghoul_rifleman.lua",
+      "file": "movable/monster.ghoul_rifleman.png",
+      "atlas_cell": [
+        7,
+        7
+      ],
+      "opaque_pixels": 459,
+      "transparent_pixels": 565
+    },
+    {
+      "id": "item.hand_drill",
+      "name": "手回しドリル",
+      "category": "item",
+      "definition": "data/entity_templates/item/hand_drill.lua",
+      "file": "item/item.hand_drill.png",
+      "atlas_cell": [
+        0,
+        8
+      ],
+      "opaque_pixels": 191,
+      "transparent_pixels": 833,
+      "source_override": "source/crafting/hand_drill.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "item.metal_saw",
+      "name": "金属のこぎり",
+      "category": "item",
+      "definition": "data/entity_templates/item/metal_saw.lua",
+      "file": "item/item.metal_saw.png",
+      "atlas_cell": [
+        1,
+        8
+      ],
+      "opaque_pixels": 86,
+      "transparent_pixels": 938,
+      "source_override": "source/crafting/metal_saw.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "item.metal_file",
+      "name": "金属やすり",
+      "category": "item",
+      "definition": "data/entity_templates/item/metal_file.lua",
+      "file": "item/item.metal_file.png",
+      "atlas_cell": [
+        2,
+        8
+      ],
+      "opaque_pixels": 131,
+      "transparent_pixels": 893,
+      "source_override": "source/crafting/metal_file.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "item.forging_hammer",
+      "name": "金工ハンマー",
+      "category": "item",
+      "definition": "data/entity_templates/item/forging_hammer.lua",
+      "file": "item/item.forging_hammer.png",
+      "atlas_cell": [
+        3,
+        8
+      ],
+      "opaque_pixels": 232,
+      "transparent_pixels": 792,
+      "source_override": "source/crafting/forging_hammer.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "item.sewing_kit",
+      "name": "裁縫セット",
+      "category": "item",
+      "definition": "data/entity_templates/item/sewing_kit.lua",
+      "file": "item/item.sewing_kit.png",
+      "atlas_cell": [
+        4,
+        8
+      ],
+      "opaque_pixels": 394,
+      "transparent_pixels": 630,
+      "source_override": "source/crafting/sewing_kit.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "item.cooking_kit",
+      "name": "携帯調理セット",
+      "category": "item",
+      "definition": "data/entity_templates/item/cooking_kit.lua",
+      "file": "item/item.cooking_kit.png",
+      "atlas_cell": [
+        5,
+        8
+      ],
+      "opaque_pixels": 264,
+      "transparent_pixels": 760,
+      "source_override": "source/crafting/cooking_kit.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "item.wood_saw",
+      "name": "木工のこぎり",
+      "category": "item",
+      "definition": "data/entity_templates/item/wood_saw.lua",
+      "file": "item/item.wood_saw.png",
+      "atlas_cell": [
+        6,
+        8
+      ],
+      "opaque_pixels": 211,
+      "transparent_pixels": 813,
+      "source_override": "source/crafting/wood_saw.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "item.metal_stock",
+      "name": "加工用鉄材",
+      "category": "item",
+      "definition": "data/entity_templates/item/metal_stock.lua",
+      "file": "item/item.metal_stock.png",
+      "atlas_cell": [
+        7,
+        8
+      ],
+      "opaque_pixels": 223,
+      "transparent_pixels": 801,
+      "source_override": "source/crafting/metal_stock.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "item.cloth",
+      "name": "清潔な布",
+      "category": "item",
+      "definition": "data/entity_templates/item/cloth.lua",
+      "file": "item/item.cloth.png",
+      "atlas_cell": [
+        0,
+        9
+      ],
+      "opaque_pixels": 218,
+      "transparent_pixels": 806,
+      "source_override": "source/crafting/cloth.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "item.leather_piece",
+      "name": "革片",
+      "category": "item",
+      "definition": "data/entity_templates/item/leather_piece.lua",
+      "file": "item/item.leather_piece.png",
+      "atlas_cell": [
+        1,
+        9
+      ],
+      "opaque_pixels": 315,
+      "transparent_pixels": 709,
+      "source_override": "source/crafting/leather_piece.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "item.thread",
+      "name": "糸",
+      "category": "item",
+      "definition": "data/entity_templates/item/thread.lua",
+      "file": "item/item.thread.png",
+      "atlas_cell": [
+        2,
+        9
+      ],
+      "opaque_pixels": 324,
+      "transparent_pixels": 700,
+      "source_override": "source/crafting/thread.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "item.charcoal",
+      "name": "木炭",
+      "category": "item",
+      "definition": "data/entity_templates/item/charcoal.lua",
+      "file": "item/item.charcoal.png",
+      "atlas_cell": [
+        3,
+        9
+      ],
+      "opaque_pixels": 235,
+      "transparent_pixels": 789,
+      "source_override": "source/crafting/charcoal.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "item.wood_handle",
+      "name": "木柄",
+      "category": "item",
+      "definition": "data/entity_templates/item/wood_handle.lua",
+      "file": "item/item.wood_handle.png",
+      "atlas_cell": [
+        4,
+        9
+      ],
+      "opaque_pixels": 147,
+      "transparent_pixels": 877,
+      "source_override": "source/crafting/wood_handle.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "item.crafting_storage",
+      "name": "制作ストレージ",
+      "category": "item",
+      "definition": "data/entity_templates/item/crafting_storage.lua",
+      "file": "item/item.crafting_storage.png",
+      "atlas_cell": [
+        5,
+        9
+      ],
+      "opaque_pixels": 360,
+      "transparent_pixels": 664,
+      "source_override": "source/crafting/crafting_storage.png",
+      "dedicated_texture": true
+    }
+  ]
+}
