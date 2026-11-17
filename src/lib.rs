@@ -1,43 +1,17 @@
-pub mod combat;
-pub mod config;
-pub mod enemies;
-pub mod game;
-mod item_actions;
-pub mod scripting;
-pub mod world;
+//! モジュールの正規配置は model / game / ui / media / scripting。
+//! ルートの再公開は既存の利用側・統合テスト向けの互換パス。
 
-pub mod crafting;
-pub mod entity;
-pub mod inspect;
-pub mod japanese;
-pub mod map;
-pub mod player;
-pub mod targeting;
-pub mod textures;
+pub mod game;
+pub mod media;
+pub mod model;
+pub mod scripting;
 pub mod ui;
 
-pub mod projectiles;
-pub mod properties;
-pub mod sound;
-pub mod statistics;
-pub mod visibility;
-
-pub mod interactions;
-
-pub mod equipment;
-
-pub mod treatment;
-
-pub mod quick_slots;
-
-mod direction_input;
-
-mod containers;
-
-mod nutrition;
-
-mod footing;
-
-mod camera;
-pub mod progression;
-pub mod theme;
+// 既存の公開 API を保持する。新しいコードは上記の正規パスを使う。
+pub use game::{
+    crafting, enemies, equipment, interactions, player, progression, statistics, treatment,
+    visibility, world,
+};
+pub use media::{sound, textures};
+pub use model::{combat, config, entity, map};
+pub use ui::{inspect, japanese, projectiles, properties, quick_slots, targeting, theme};

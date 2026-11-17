@@ -1,52 +1,65 @@
-# 初回 Rust 実装と設計の対応
+# Rust 実装と設計の対応
 
 `class.pu` と `basic_algorism.pu` を基準にする。
-初回実装では型を保持しつつ、製作・保存など未実装の振る舞いは明示する。
+`class.pu` は現在の実装をモジュール構成・実行と状態所有・Luaと制作の3図で示す。未実装の提案は `production/` 等の資料と区別する。
+
+## モジュールの配置
+
+- `src/model/`：個体・Lua定義・配置索引・戦闘計算。
+- `src/game/`：ゲーム状態・行動適用・世界操作・制作・成長。
+- `src/ui/`：入力・描画・画面・表示演出・文字と配色。
+- `src/media/`：画像の検査と描画接続・音声再生。
+- `src/scripting.rs`：Lua実行とAction / Effectの境界。
+
+子モジュールの多くは同じ `Game` のメソッドを分担する。独立したSystemを導入した構造ではなく、GameとUIの相互依存や、modelからCraftJob / Progressionへの型参照も残る。今後の分離では、制作等に残る画面処理とGameの状態所有を対象にする。
+`lib.rs` の旧ルートパスは互換用の再公開。内部コードと新しいコードは上記の正規パスを使う。
+
+## 主要な型・処理
 
 | 設計 | Rust の担当 |
 | --- | --- |
-| Game | `src/game.rs`。player_id / entities / map / recipes / entity_definitions / scripts / pending_action / running / turn を所有 |
-| GameState::tick、input / update / render | `src/ui.rs` の Game 実装。入力は Action を作り、状態の変更は update、描画は render |
-| Entity enum | `src/entity.rs`。Movable(MoveEntity) / Static(StaticEntity) / Item(ItemEntity) を match して更新・描画 |
+| Game | `src/game/mod.rs`。player_id / entities / map / recipes / entity_definitions / scripts / pending_action / running / turn を所有 |
+| GameState::tick、input / update / render | `src/ui/mod.rs` がtick、`src/ui/input.rs` が入力→Action、`src/game/actions.rs` がupdate・行動適用、`src/ui/render.rs` が描画を担当 |
+| Entity enum | `src/model/entity.rs`。Movable(MoveEntity) / Static(StaticEntity) / Item(ItemEntity) を match して更新・描画 |
 | MoveEntity | 全体HP・部位の負傷段階、水分、正気度、六能力、Skill、Psykick、Status、Inventory、CraftJob、三栄養（初期50・上限100）を保持 |
 | HP / Status / Psykick の function 部 | LuaHookRef で on_damage / on_status / on_ability へ対応。Psykick は use_ability API から呼ぶ |
 | StaticEntity / ItemEntity | 耐久、状態、資源、設備・道具機能などを個体に保持 |
 | ItemLocation / Inventory | Ground / CarriedBy の排他的な場所と、所持品の EntityId を保持 |
-| Map / Cell | `src/map.rs`。位置ごとの EntityId 索引。地形本体も StaticEntity |
-| Entity 定義 | `src/config.rs`。Lua の category 別テーブルを型付きで変換し、一種類だけであることを検証 |
-| LuaRuntime / ScriptBinding | `src/scripting.rs` と `src/entity.rs`。定義の関数と個体の保存可能な state を分離 |
-| CraftingSystem / Recipe / CraftJob 等 | `src/crafting.rs`。Luaの12レシピ、周辺と収納の材料・道具、機能レベル、技能差による確率と出来、完了時の一括消費・生成に対応 |
-| 戦闘 | `src/combat.rs` と `src/world.rs` の Game メソッド。命中、貫通、ダメージ、弾薬と死亡処理 |
-| 乱数 | `src/combat.rs` のRngがbracket-libのRandomNumberGeneratorを保持。scenario.seedで初期化し、Gameの複製・効果失敗時の巻き戻しでも乱数状態を保持 |
-| 追跡経路 | `src/world.rs` のNavigationMapでゲームの通行判定をBaseMapへ渡し、ゲーム側のBinaryHeapで重み付きDijkstraを実行（固定版bracket-libの不均一コスト制約への対応）。static.movement_costを移動先コストとして最小合計コストを選択。占有された終点は探索のみ許可し、次の一歩はcan_stepで再検査 |
-| プロパティ | `src/properties.rs`。@で現在値を表示し、スクロール・開閉はターンを消費しない |
-| インタラクト・詳細 | `src/interactions.rs`。e→方向→Lua登録の行動メニュー。所持品はw装備/e詳細。開閉・取得は実行時に再検査し、失敗時は巻き戻す。[仕様](interactions.md) |
-| 視野 | `src/visibility.rs`。Entityのblocks_sightをBaseMap::is_opaqueへ接続し、bracket-libのfield_of_viewで現在の可視マスを計算。描画・調べる・射撃対象選択に適用 |
-| 弾道演出 | `src/projectiles.rs`。bracket-libのline2dで射撃経路を作り、frame_time_msで飛翔・命中/回避を順番に描画。Gameが表示キューを保持し、update_frameが演出更新と既存updateを呼ぶ |
-| 効果音 | `src/sound.rs`。Gameは最大64件の音イベントのみを保持。GUIのPlayingGameがtick後に取り出し、rodioで非同期再生。音声デバイスと再生中の音はゲーム状態の複製・巻き戻しから分離 |
+| Map / Cell | `src/model/map.rs`。位置ごとの EntityId 索引。地形本体も StaticEntity |
+| Entity 定義 | `src/model/config.rs`。Lua の category 別テーブルを型付きで変換し、一種類だけであることを検証 |
+| LuaRuntime / ScriptBinding | `src/scripting.rs` と `src/model/entity.rs`。定義の関数と個体の保存可能な state を分離 |
+| CraftingSystem / Recipe / CraftJob 等 | `src/game/crafting.rs`。Luaの12レシピ、周辺と収納の材料・道具、機能レベル、技能差による確率と出来、完了時の一括消費・生成に対応 |
+| 戦闘 | `src/model/combat.rs` と `src/game/world.rs` の Game メソッド。命中、貫通、ダメージ、弾薬と死亡処理 |
+| 乱数 | `src/model/combat.rs` のRngがbracket-libのRandomNumberGeneratorを保持。scenario.seedで初期化し、Gameの複製・効果失敗時の巻き戻しでも乱数状態を保持 |
+| 追跡経路 | `src/game/world.rs` のNavigationMapでゲームの通行判定をBaseMapへ渡し、ゲーム側のBinaryHeapで重み付きDijkstraを実行（固定版bracket-libの不均一コスト制約への対応）。static.movement_costを移動先コストとして最小合計コストを選択。占有された終点は探索のみ許可し、次の一歩はcan_stepで再検査 |
+| プロパティ | `src/ui/properties.rs`。@で現在値を表示し、スクロール・開閉はターンを消費しない |
+| インタラクト・詳細 | `src/game/interactions.rs`。e→方向→Lua登録の行動メニュー。所持品はw装備/e詳細。開閉・取得は実行時に再検査し、失敗時は巻き戻す。[仕様](interactions.md) |
+| 視野 | `src/game/visibility.rs`。Entityのblocks_sightをBaseMap::is_opaqueへ接続し、bracket-libのfield_of_viewで現在の可視マスを計算。描画・調べる・射撃対象選択に適用 |
+| 弾道演出 | `src/ui/animations.rs`。bracket-libのline2dで射撃経路を作り、frame_time_msで飛翔・命中/回避を順番に描画。Gameが表示キューを保持し、update_frameが演出更新と既存updateを呼ぶ |
+| 効果音 | `src/media/sound.rs`。Gameは最大64件の音イベントのみを保持。GUIのPlayingGameがtick後に取り出し、rodioで非同期再生。音声デバイスと再生中の音はゲーム状態の複製・巻き戻しから分離 |
 
 遠距離攻撃の成立時に、発射位置・照準位置・視野・命中結果を表示キューへ保存する。
 プレイヤー・Lua敵の共通attack処理へ接続し、近接・成立しない射撃では演出を作らない。
 戦闘結果・弾薬消費・敵ターンは従来どおり即時に処理し、演出の再生では乱数やターンを進めない。
-銃は黄色の短い尾を120ms、ammo.boltは水色の矢を一マス45ms相当（90～450ms）で進め、
-その後90ms、命中を橙色の*、回避を灰色のxで表示する。命中表示は装甲貫通を保証しない。
+銃は8方向の弾体・光跡を120ms、ammo.boltは水色の矢を一マス45ms相当（90～450ms）で進め、
+その後90ms、命中火花または回避の残像を4フレームで表示する。ASCIIは従来の記号を使用。命中表示は装甲貫通を保証しない。
 発射時と描画時の両方で視野内のマスだけを表示する。キューは最大64件に制限する。
 GUIは再生中の追加行動を抑止し、終了操作は受け付ける。tickのinput → update → render順序は維持する。
 
-`src/world.rs` は Game の配置・検索・攻撃メソッドを分けたファイルで、
+`src/game/world.rs` は Game の配置・検索・攻撃メソッドを分けたファイルで、
 独立に世界を所有する World 型は置かない。GUI用のPlayingGameはGameと音声デバイスの寿命を保持するだけで、ゲーム状態の所有責務はGameに集約する。
 Lua の ctx は配置データの読み取り専用スナップショットを使い、実行中の Game / LuaRuntime を保持しない。
 
-oの開く操作はsrc/interactions.rsで、到達可能・可視・生存中の地面上のEntityに現在有効なopen行動があるかを検索する。一対象なら直接実行、複数ならOpenDirection、同一マスに重なればOpenMenuで選択する。通常のPerformInteractionへ渡すことで、Luaの条件/処理、巻き戻し、ターン消費、宝箱の中身画面、閃光による行動不能を共通に保つ。Lua controlsのtype=openをRustの検証・入力変換へ追加した。
+oの開く操作はsrc/game/interactions.rsで、到達可能・可視・生存中の地面上のEntityに現在有効なopen行動があるかを検索する。一対象なら直接実行、複数ならOpenDirection、同一マスに重なればOpenMenuで選択する。通常のPerformInteractionへ渡すことで、Luaの条件/処理、巻き戻し、ターン消費、宝箱の中身画面、閃光による行動不能を共通に保つ。Lua controlsのtype=openをRustの検証・入力変換へ追加した。
 
-近接音は成立した攻撃（素手・回避も含む）で発行し、敵は攻撃者が攻撃時の視野内にいる場合のみ鳴らす。
+近接音は成立した攻撃（素手・回避も含む）のモーション開始時に発行し、敵は攻撃者が攻撃時の視野内にいる場合のみ鳴らす。
 射撃音は弾道の開始時に一度発行し、複数の弾道はそれぞれの開始まで音を待つ。
 投擲も同じ表示キューを使い、投擲音を飛翔開始、爆発/閃光音を着弾時に各一度発行する。飛翔180〜500ms、着弾後500msで中心から範囲を広げ、文字と背景色を減衰させる。爆発は黄/橙の*、閃光は白/水色の+。効果適用前の壁・視野で範囲を保存し、描画時の現在視野でも絞るため、壁の破壊後に背後へ演出が漏れない。足元への投擲にも飛翔・着弾の両段階がある。結果適用と演出を分離し、演出中に消費・ダメージ・ターン・乱数を再処理しない。
 弾道を作らない視界外射撃や失敗した攻撃は無音。Lua効果の巻き戻しでは未再生の音イベントも戻す。
 WAVは起動時に指定rootから読み込み、音量0.45・最大16音で重ねて再生する。
 音声初期化失敗時は標準エラーへ理由を出して無音継続。--muteとGUIなしの検査・シミュレーションでは音声デバイスを開かない。
 
-Entity を ID 順に処理するため、図の HashMap に相当する所有領域には BTreeMap を使用している。
+Entity を ID 順に処理するため、所有領域には BTreeMap を使用している。図も実装に合わせて表記する。
 初回のマップは z=0 の一階層。Pos の z と Map の depth は残し、範囲外の配置を拒否する。
 装備武器の ID は Inventory に追加して保持する。水分はMeter、栄養はNutritionで保持し、独立した満腹度は持たない。
 設定の英語名と図の日本語ローマ字名の対応は生成時に変換する（mass_g → jyuuryou など）。
@@ -71,8 +84,8 @@ Lua 内のグローバルや upvalue に持たせた可変状態までは巻き�
 装備・弾薬・命中・貫通・ダメージ、拾う・置く・容量判定、食料の栄養・回復・消費、
 木の破壊後の木材生成、全体HP・部位の負傷段階と死亡、Lua の HP・状態・能力イベントを接続した。
 出血/大出血/切断の継続被害、脚切断の移動遅延、手の欠損、左右装備・両手占有、逆手の被害補正、持ち方によるPV・射程・命中補正を接続した。
-包帯による部位選択・100ターン処置・止血状態をsrc/treatment.rsで管理し、クリティカル時の負傷進行と再出血へ接続した。手の装備は武器/盾と対応する持ち方に制限。src/quick_slots.rsで所持品w→数字の登録、通常時の数字による持ち替え・消耗品使用を管理。防具はwで別部位へ直接着脱し、AV・DVを合算する。革の鎧を仮マップへ追加した。終了キーはCtrl+Q。
-宝箱の初期contentsはLua定義から個体にコピーし、src/containers.rsで複数選択と所持品への一括取得を扱う。中身は開閉・拾得・設置・複製で保持し、容量等の違反や途中失敗では取得全体を取り消す。箱の中身の重量も拾得判定へ含める。
+包帯による部位選択・100ターン処置・止血状態をsrc/game/treatment.rsで管理し、クリティカル時の負傷進行と再出血へ接続した。手の装備は武器/盾と対応する持ち方に制限。src/ui/quick_slots.rsで所持品w→数字の登録、通常時の数字による持ち替え・消耗品使用を管理。防具はwで別部位へ直接着脱し、AV・DVを合算する。革の鎧を仮マップへ追加した。終了キーはCtrl+Q。
+宝箱の初期contentsはLua定義から個体にコピーし、src/game/containers.rsで複数選択と所持品への一括取得を扱う。中身は開閉・拾得・設置・複製で保持し、容量等の違反や途中失敗では取得全体を取り消す。箱の中身の重量も拾得判定へ含める。
 炭水化物は毎世界ターン消費点1、成立した攻撃（近接・射撃・投擲）で追加1を累計し、20点ごとに1低下する。ビタミンは20世界ターン、水分は10世界ターンごとに各1低下する。移動による追加の炭水化物消費はない。正常でタンパク質があれば毎世界ターンHP1を自然回復し、回復したHP1につきタンパク質1を消費する。HP満タン時は消費しない。タンパク質0・風邪・肺炎では自然回復を止める。
 
 正気度・技能などの値は保持するが、能力補正は戦闘ルールで指定した筋力と敏捷だけ。
@@ -89,7 +102,7 @@ GUI の詳細な確認状況は PROJECT_PROGRESS.md に記録する。
 
 ## entity_document の補完（2026-11-15）
 
-36定義を追加。src/item_actions.rsが投擲・射程2近接の照準と確定処理、src/enemies.rsが8種の固有行動を担当する。
+36定義を追加。src/game/item_actions.rsが投擲・射程2近接の照準と確定処理、src/game/enemies.rsが8種の固有行動を担当する。
 投擲は命中ダイスを振らず指定マスに効果を適用し、直接被害またはstunned_untilを与える。壁越しの効果を除外し、適用に失敗すれば消費・被害・ID等を戻す。
 MoveEntityは閃光期限と仲間から通知された最終目撃位置・期限を個体ごとに保持。Game複製にも含む。Lua参照スナップショットでも公開する。
 制作はpの画面から開始・一ターン進行・中止し、選んだ材料・工具・設備を再検査する。所持品・周囲8マス・その範囲の収納内容を使い、道具機能レベルは必須、スキルは確率と出来の補正に使う。レシピと判定パラメータはdata/production/recipes.lua。成否/出来・消費・生成を一括処理し、内部エラーでは乱数も戻す。失敗時は完成品なし・既定で材料半量切上げ消費。武器品質は固定ダメージ、耐久品は最大耐久に反映。収納内部はContainerEntryの数量を直接変更し、道具は消費しない。新造の箱は空にする。完成品は共通のpickup_capacityで所持できる個数を調べ、入る分はpickupで取得し、残りは足元へ置く。材料消費後の空き容量を使い、品質を保ったまま分割する。受け取りは追加ターンなし。
@@ -101,15 +114,31 @@ CLIは既定でGame::load_test_mapから専用Luaシナリオを読み込む。-
 既存のGame::loadは通常シナリオを維持する。任意のシナリオlabelsをMapLabelとして検証・保持し、通常の視野判定を通して描画する。
 64定義の配置、棚・扉への到達、100ターンの隔離、一室開放時の射線を統合テストで確認する。
 
-射程2以上のmeleeはsrc/targeting.rsの射撃と共通の敵選択を使い、確定時に選択した武器で通常のattackを呼ぶ。隣接方向攻撃を維持し、投擲品だけマスを指定する。
+射程2以上のmeleeはsrc/ui/targeting.rsの射撃と共通の敵選択を使い、確定時に選択した武器で通常のattackを呼ぶ。隣接方向攻撃を維持し、投擲品だけマスを指定する。
 テストマップは左上の石壁付き倉庫（開始4,4・出口27,19）と右側の敵試験室に分離した。倉庫の扉を閉じた状態なら試験室を開放しても準備できることを検証する。
 Sound::Reloadとreload.wavを追加。装填成功時にプレイヤーまたは視野内の敵から一度だけ音イベントを出す。既存のキュー・巻き戻し・ミュートを使う。
 
-src/nutrition.rsで自然回復と風邪を世界ターンの末尾に処理する。タンパク質は自然回復時にHP1につき1消費し、満タン・病気による停止中は減らさない。食品は不足栄養をgain_nutritionで補う。
+src/game/nutrition.rsで自然回復と風邪を世界ターンの末尾に処理する。タンパク質は自然回復時にHP1につき1消費し、満タン・病気による停止中は減らさない。食品は不足栄養をgain_nutritionで補う。
 ビタミン0では100ターンごとに1/6で正常→cold→pneumonia。ビタミン1以上では100ターンごとに1/2で逆順に一段階回復する。病気中は自然回復停止。肺炎は成功した移動の所要時間を累計し10ターンごとにHP1減少（下限1）。判定/移動カウンタは個体別で、復帰・段階変化でリセット。詳細はrule/food.md。disease_rngを戦闘用rngと分け、Game複製・失敗時の巻き戻しに含める。
 満腹度の型・Lua定義・スナップショット・HUD・プロパティを廃止し、個体の三栄養を初期50・上限100へ統一した。死亡復帰でも50へ戻す。
 
-src/footing.rsでプレイヤー自身を除く足元一覧を通常画面の右側に描画する。既存の可視Entity検索から自分を除外し、同一マスの生物・地形・固定物・設備・品物を描画順の上から取得する。名前は幅に合わせて折り返し、内部IDは表示せず品物の個数と効果を表示する。武器の威力・貫通・射程、防具の防御・回避、栄養・HP・水分の回復量は定義から生成し、その他の用途・副作用は既存の説明を表示する。
+src/ui/footing.rsでプレイヤー自身を除く足元一覧を通常画面の右側に描画する。既存の可視Entity検索から自分を除外し、同一マスの生物・地形・固定物・設備・品物を描画順の上から取得する。名前は幅に合わせて折り返し、内部IDは表示せず品物の個数と効果を表示する。武器の威力・貫通・射程、防具の防御・回避、栄養・HP・水分の回復量は定義から生成し、その他の用途・副作用は既存の説明を表示する。
 一覧の行数に上限を設けず、ScrollFootingでPageUp/PageDownのページ操作を状態更新へ接続。スクロール・表示は無料。位置の実更新と死亡復帰でスクロールをリセットし、拾得/設置/削除後は現在の一覧長へ丸める。
 
 走行はAction::ToggleRunningをv（Velocity）へ割り当て、通常画面のみ無料切替。MoveEntityでスタミナ・走行状態・移動時間端数・回復消費端数を保持する。player_moveは成功した走行移動に5スタミナを使い、所要時間を1/0ターン交互としてmove_with_durationへ渡す。衝突・敵への攻撃では消費せず、攻撃は1ターン。脚切断時は走行不可。スタミナ切れで歩行へ戻り、走行OFF中のみ毎世界ターン最大5回復、実回復20ごと炭水化物1消費。HUD・プロパティへ状態を表示し、復帰で初期化する。棍棒1d2+4・メイス1d2+5へ変更。
+
+## 手榴弾の画像演出（2026-11-16）
+
+`src/ui/animations.rs` が爆発種別と経過時間から飛翔・着弾の画像IDとフレームを選び、`TextureRenderer::render_effect` が世界と同じRGBAレイヤへ透過描画する。画像は `data/entity_tex/manifest.json` の `effects` に別枠で登録。Entity定義数・基本画像77枚は維持する。PNG素材の検査・アトラス配置は通常のTextureCatalogへ統合した。
+爆発手榴弾の威力はLuaのpower=36で中心36・隣接24・外周12。半径2・射程6、閃光の3/2/1ターンは維持。表示による追加消費・ダメージ・乱数消費はない。描画テストと素材検査は実GUIの確認とは区別する。
+
+## 共通の攻撃モーション（2026-11-16）
+
+`ui/animations.rs` のAnimationをGame.animationsが最大64件保持する。射撃・投擲・近接を同じ待ち列へ入れ、世界ターンを区切るanimation_batchの昇順、その中は攻撃時のsubayasa降順で安定ソートする。プレイヤー行動からそれに続く敵ターンまでは同じbatch。advance_turnの終了時にbatchを進める。再生開始済みの先頭は固定し、同値は元の発生順を保つ。この順序は表示専用で、ダメージ判定・Lua行動の処理順は変えない。
+`ui/melee.rs` のMeleeMotionは攻撃者のEntityスナップショットと相手の位置を保持し、0→0.32マス→0を160msで補間する。世界の駒を描かず、スナップショットを専用の透過コンソールへ描く。実座標・索引・ターン・乱数は動かさない。ASCIIも文字の駒で同じ補間を行う。ウィンドウは世界→モーション→照準等のオーバーレイ→UI→ポップアップの順。
+SparseConsoleのキャッシュがoffsetを比較しないため、透明な画面外マーカーにモーション進行度を含める。ズームに合わせたoffsetとスケールで描画し、終了時は通常の駒へ戻す。攻撃時と現在の視野を満たす位置だけ表示する。攻撃者が死亡・削除された後もスナップショットから再生できる。
+`Game::update_frame` を公開し、GUIなしでも同じ表示キューと音イベントを進められる。近接音も各モーション開始時へ遅延した。旧公開モジュール名projectilesはanimationsの再公開として保持する。命中火花と回避残像、弾丸8方向の計16PNGを追加し、演出素材は32PNG。
+
+## 消毒の廃止とパラメータの棚卸し（2026-11-16）
+
+消毒薬を定義・マップ・有効画像から除外し、77定義へ整理した。傷の汚染が通常プレイで発生する処理はなく、今後の治療ルールにも採用しない。汎用の状態削除APIは維持する。能力・技能・設定の使用/未接続は [mijisou.md](mijisou.md) を参照。

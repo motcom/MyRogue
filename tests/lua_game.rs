@@ -67,7 +67,7 @@ fn assert_index(game: &Game) {
 #[test]
 fn load_matches_class_model_and_all_terrain_is_entity() {
     let g = load();
-    assert_eq!(g.entity_definitions.len(), 78);
+    assert_eq!(g.entity_definitions.len(), 77);
     assert_eq!(g.map.depth, 1);
     let a = g.actor(g.player_id).unwrap();
     assert_eq!(a.sanity, 100);
@@ -449,6 +449,7 @@ fn failed_lua_attack_batch_discards_sound_events() {
     assert_eq!(game.rng.clone().roll(100000), expected_rng.roll(100000));
     game.equip_auto(player, knife).unwrap();
     game.attack(player, target, Some(knife)).unwrap();
+    game.update_frame(0.0);
     assert_eq!(
         game.take_sounds().collect::<Vec<_>>(),
         vec![my_rogue::sound::Sound::Melee]
@@ -1006,6 +1007,7 @@ fn weapon_criticals_follow_damage_rolls_for_both_sides_and_all_weapons() {
                 .unwrap();
             assert_eq!(w.critical_value, threshold);
             let accuracy = combat::modifier(initial.actor(attacker).unwrap().subayasa)
+                + combat::modifier(initial.actor(attacker).unwrap().kiyousa)
                 + initial
                     .definition(attacker)
                     .movable
@@ -1412,5 +1414,94 @@ fn lua_can_practice_a_skill_and_failed_effect_batches_roll_it_back() {
             practice.get(&SkillKind::Picking).copied().unwrap_or(0),
             u32::from(!failing)
         );
+    }
+}
+
+#[test]
+fn psychic_lua_effects_apply_and_failed_terminal_batch_restores_the_world() {
+    let fixture = Fixture::new();
+    fixture.change(
+        "data/entity_templates/item/bread.lua",
+        r#"
+        definition.hooks.on_use = function(self,ctx,event)
+            return {effects={
+                {type="psychic_attack",target=event.user,power=1},
+                {type="consume_item",target=self.id,quantity=1}
+            }}
+        end
+        definition.hooks.on_damage = function(self,ctx,event)
+            return {effects={
+                {type="sanity_damage",target=event.user,amount=10000},
+                {type="consume_item",target=self.id,quantity=999999}
+            }}
+        end
+    "#,
+    );
+    let mut g = Game::load(&fixture.0).unwrap();
+    without_enemies(&mut g);
+    let p = g.player_id;
+    let item = inventory_item(&g, "item.bread");
+    g.actor_mut(p).unwrap().seishinryoku = 8;
+    let sanity = g.actor(p).unwrap().sanity;
+    assert!(g.hook(item, "on_damage", json!({"user":p})).is_err());
+    assert!(g.running && !g.game_over);
+    assert!(!g.actor(p).unwrap().ghoul);
+    assert_eq!(g.actor(p).unwrap().sanity, sanity);
+    g.use_item(item).unwrap();
+    assert_eq!(g.actor(p).unwrap().sanity, sanity - 1);
+}
+
+#[test]
+fn dexterity_improves_real_unarmed_hit_chance_for_player_and_enemies() {
+    let mut base = load();
+    without_enemies(&mut base);
+    let p = base.player_id;
+    let enemy = base
+        .spawn(
+            "monster.ghoul_worker",
+            Some(base.position(p).unwrap().offset(1, 0)),
+            None,
+            1,
+        )
+        .unwrap();
+    for (attacker, target) in [(p, enemy), (enemy, p)] {
+        // Remove held weapons so this exercises the common unarmed accuracy path.
+        let a = base.actor_mut(attacker).unwrap();
+        a.inventory.right_hand = None;
+        a.inventory.left_hand = None;
+        base.actor_mut(target).unwrap().hp = HP {
+            hp: 10000,
+            max_hp: 10000,
+        };
+        let mut improved = 0;
+        for seed in 0..64 {
+            let mut clumsy = base.clone();
+            let mut dexterous = base.clone();
+            clumsy.rng = Rng::new(seed);
+            dexterous.rng = Rng::new(seed);
+            clumsy.actor_mut(attacker).unwrap().kiyousa = 0;
+            dexterous.actor_mut(attacker).unwrap().kiyousa = 30;
+            clumsy.attack(attacker, target, None).unwrap();
+            dexterous.attack(attacker, target, None).unwrap();
+            if dexterous.actor(target).unwrap().hp.hp < clumsy.actor(target).unwrap().hp.hp {
+                improved += 1;
+            }
+        }
+        assert!(improved > 0);
+    }
+}
+
+#[test]
+fn removed_attributes_social_skill_and_invalid_initial_sanity_are_rejected() {
+    for change in [
+        "definition.movable.attributes.tairyoku=8",
+        "definition.movable.attributes.tiryoku=8",
+        "definition.movable.skills.syakou=0",
+        "definition.movable.sanity=0",
+        "definition.movable.sanity=-1",
+    ] {
+        let fixture = Fixture::new();
+        fixture.change("data/entity_templates/player.lua", change);
+        assert!(Game::load(&fixture.0).is_err(), "{change}");
     }
 }

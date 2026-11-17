@@ -6,7 +6,7 @@ figure{margin:0;padding:12px;background:#1a2023}img{width:128px;height:128px;ima
 body[data-bg="field"] .tile{background:url(static/terrain.field.png);background-size:128px}
 body[data-bg="road"] .tile{background:url(static/terrain.road.png);background-size:128px}
 figcaption{margin-top:8px}code{font-size:12px}button{margin:0 8px 20px 0;padding:8px}</style>
-<h1>Entity textures · Ash & Rust 32</h1><p>全78定義 / 32×32 RGBA / 4倍表示。背景を切り替えて透過を確認。</p>
+<h1>Entity textures · Ash & Rust 32</h1><p>全77定義 / 32×32 RGBA / 4倍表示。背景を切り替えて透過を確認。</p>
 <button onclick="document.body.dataset.bg=''">透過チェッカー</button>
 <button onclick="document.body.dataset.bg='field'">野原に重ねる</button>
 <button onclick="document.body.dataset.bg='road'">道に重ねる</button>
@@ -26,7 +26,6 @@ figcaption{margin-top:8px}code{font-size:12px}button{margin:0 8px 20px 0;padding
 <figure><div class="tile"><img src="item/item.crossbow.png"></div><figcaption>クロスボウ<br><code>item.crossbow</code></figcaption></figure>
 <figure><div class="tile"><img src="item/item.sks.png"></div><figcaption>SKS<br><code>item.sks</code></figcaption></figure>
 <figure><div class="tile"><img src="item/item.bandage.png"></div><figcaption>包帯<br><code>item.bandage</code></figcaption></figure>
-<figure><div class="tile"><img src="item/item.disinfectant.png"></div><figcaption>消毒薬<br><code>item.disinfectant</code></figcaption></figure>
 <figure><div class="tile"><img src="item/item.syringe.png"></div><figcaption>注射器<br><code>item.syringe</code></figcaption></figure>
 <figure><div class="tile"><img src="item/item.bread.png"></div><figcaption>パン<br><code>item.bread</code></figcaption></figure>
 <figure><div class="tile"><img src="item/item.mineral_water.png"></div><figcaption>ミネラルウォーター<br><code>item.mineral_water</code></figcaption></figure>
@@ -87,4 +86,35 @@ figcaption{margin-top:8px}code{font-size:12px}button{margin:0 8px 20px 0;padding
 <figure><div class="tile"><img src="item/item.thread.png"></div><figcaption>糸<br><code>item.thread</code></figcaption></figure>
 <figure><div class="tile"><img src="item/item.charcoal.png"></div><figcaption>木炭<br><code>item.charcoal</code></figcaption></figure>
 <figure><div class="tile"><img src="item/item.wood_handle.png"></div><figcaption>木柄<br><code>item.wood_handle</code></figcaption></figure>
-<figure><div class="tile"><img src="item/item.crafting_storage.png"></div><figcaption>制作ストレージ<br><code>item.crafting_storage</code></figcaption></figure></div></html>
+<figure><div class="tile"><img src="item/item.crafting_storage.png"></div><figcaption>制作ストレージ<br><code>item.crafting_storage</code></figcaption></figure></div><h2>投擲・射撃の演出（32枚）</h2><div class="grid"><figure><div class="tile"><img src="effects/throw.explosive.0.png"></div><figcaption>爆発手榴弾・飛翔 1/4<br><code>throw.explosive.0</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/throw.explosive.1.png"></div><figcaption>爆発手榴弾・飛翔 2/4<br><code>throw.explosive.1</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/throw.explosive.2.png"></div><figcaption>爆発手榴弾・飛翔 3/4<br><code>throw.explosive.2</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/throw.explosive.3.png"></div><figcaption>爆発手榴弾・飛翔 4/4<br><code>throw.explosive.3</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/throw.flash.0.png"></div><figcaption>閃光手榴弾・飛翔 1/4<br><code>throw.flash.0</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/throw.flash.1.png"></div><figcaption>閃光手榴弾・飛翔 2/4<br><code>throw.flash.1</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/throw.flash.2.png"></div><figcaption>閃光手榴弾・飛翔 3/4<br><code>throw.flash.2</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/throw.flash.3.png"></div><figcaption>閃光手榴弾・飛翔 4/4<br><code>throw.flash.3</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/burst.explosive.0.png"></div><figcaption>爆発 1/4<br><code>burst.explosive.0</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/burst.explosive.1.png"></div><figcaption>爆発 2/4<br><code>burst.explosive.1</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/burst.explosive.2.png"></div><figcaption>爆発 3/4<br><code>burst.explosive.2</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/burst.explosive.3.png"></div><figcaption>爆発 4/4<br><code>burst.explosive.3</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/burst.flash.0.png"></div><figcaption>閃光 1/4<br><code>burst.flash.0</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/burst.flash.1.png"></div><figcaption>閃光 2/4<br><code>burst.flash.1</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/burst.flash.2.png"></div><figcaption>閃光 3/4<br><code>burst.flash.2</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/burst.flash.3.png"></div><figcaption>閃光 4/4<br><code>burst.flash.3</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/shot.bullet.0.png"></div><figcaption>弾丸・8方向 1/8<br><code>shot.bullet.0</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/shot.bullet.1.png"></div><figcaption>弾丸・8方向 2/8<br><code>shot.bullet.1</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/shot.bullet.2.png"></div><figcaption>弾丸・8方向 3/8<br><code>shot.bullet.2</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/shot.bullet.3.png"></div><figcaption>弾丸・8方向 4/8<br><code>shot.bullet.3</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/shot.bullet.4.png"></div><figcaption>弾丸・8方向 5/8<br><code>shot.bullet.4</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/shot.bullet.5.png"></div><figcaption>弾丸・8方向 6/8<br><code>shot.bullet.5</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/shot.bullet.6.png"></div><figcaption>弾丸・8方向 7/8<br><code>shot.bullet.6</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/shot.bullet.7.png"></div><figcaption>弾丸・8方向 8/8<br><code>shot.bullet.7</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/impact.hit.0.png"></div><figcaption>命中火花 1/4<br><code>impact.hit.0</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/impact.hit.1.png"></div><figcaption>命中火花 2/4<br><code>impact.hit.1</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/impact.hit.2.png"></div><figcaption>命中火花 3/4<br><code>impact.hit.2</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/impact.hit.3.png"></div><figcaption>命中火花 4/4<br><code>impact.hit.3</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/impact.miss.0.png"></div><figcaption>回避・通過 1/4<br><code>impact.miss.0</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/impact.miss.1.png"></div><figcaption>回避・通過 2/4<br><code>impact.miss.1</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/impact.miss.2.png"></div><figcaption>回避・通過 3/4<br><code>impact.miss.2</code></figcaption></figure>
+<figure><div class="tile"><img src="effects/impact.miss.3.png"></div><figcaption>回避・通過 4/4<br><code>impact.miss.3</code></figcaption></figure></div></html>

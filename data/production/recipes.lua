@@ -16,7 +16,7 @@ local function recipe(id, name, ingredients, tools, skill, recommended, turns, o
 end
 return {
     rules = {
-        success_base=60, skill_step=10, success_min=5, success_max=100,
+        success_base=60, skill_step=10, dexterity_step=5, success_min=5, success_max=100,
         tool_step=5, tool_cap=10, material_step=5, material_cap=10,
         quality_thresholds={10,30,75,90,100}, failure_material_percent=50,
     },

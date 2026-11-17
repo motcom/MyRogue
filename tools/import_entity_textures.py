@@ -2,7 +2,7 @@
 """Import the original atlas and dedicated sources; validate palette and alpha.
 
 Usage: python3 tools/import_entity_textures.py [source/atlas32.png]
-       [--only-simple | --only-crafting | --validate-only]
+       [--only-simple | --only-crafting | --only-effects | --validate-only]
 Python only orchestrates ImageMagick and writes metadata; image operations use magick.
 """
 import argparse
@@ -20,14 +20,61 @@ def magick(*args):
     return subprocess.check_output(["magick", *map(str, args)])
 
 
+def import_effects(options, allowed, palette):
+    recipe_path = OUT / "source/effects/recipe.json"
+    if not recipe_path.exists():
+        return []
+    recipe = json.loads(recipe_path.read_text())
+    entries = []
+    with tempfile.TemporaryDirectory() as tmp:
+        swatches = Path(tmp) / "palette.ppm"
+        swatches.write_text("P3\n32 1\n255\n" + "\n".join(" ".join(map(str, c["rgb"])) for c in palette["colors"]))
+        for animation in recipe["animations"]:
+            source_name = animation.get("source", recipe["source"])
+            source = OUT / source_name
+            width, height = map(int, magick("identify", "-format", "%w %h", source).split())
+            cols, rows = animation.get("grid", recipe["grid"])
+            for frame in range(animation["frames"]):
+                key = f'{animation["id"]}.{frame}'
+                target = OUT / "effects" / f"{key}.png"
+                target.parent.mkdir(exist_ok=True)
+                col, row = frame % cols, animation["row"] + frame // cols
+                assert row < rows, key
+                x, y = round(col * width / cols), round(row * height / rows)
+                w = round((col + 1) * width / cols) - x
+                h = round((row + 1) * height / rows) - y
+                if not options.validate_only and not options.only_simple and not options.only_crafting:
+                    magick(source, "-crop", f"{w}x{h}+{x}+{y}", "+repage", "-sample", "32x32!",
+                           "-channel", "A", "-threshold", "50%", "+channel",
+                           "(", "+clone", "-alpha", "extract", "-write", "mpr:mask", "+delete", ")",
+                           "-alpha", "off", "+dither", "-remap", swatches, "mpr:mask", "-alpha", "off",
+                           "-compose", "CopyOpacity", "-composite", "-depth", "8", f"PNG32:{target}")
+                assert magick("identify", "-format", "%w %h %[channels]", target).decode().startswith("32 32 srgba"), key
+                pixels = magick(target, "-depth", "8", "rgba:-")
+                rgba = list(zip(*[iter(pixels)]*4))
+                assert all(a in (0,255) and (a == 0 or (r,g,b) in allowed) for r,g,b,a in rgba), key
+                visible = sum(a == 255 for *_,a in rgba)
+                assert 0 < visible < 1024, key
+                entries.append(dict(id=key, name=f'{animation["name"]} {frame+1}/{animation["frames"]}',
+                                    file=target.relative_to(OUT).as_posix(), source_override=source_name,
+                                    animation=animation["id"], frame=frame, opaque_pixels=visible,
+                                    transparent_pixels=1024-visible))
+    contact = OUT / "source/effects/contact32.png"
+    magick("montage", *[OUT/e["file"] for e in entries], "-tile", "4x", "-geometry", "32x32+2+2",
+           "-background", "#1a2023", contact)
+    magick(contact, "-filter", "point", "-resize", "600%", OUT/"effects_preview.png")
+    return entries
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", nargs="?", default=str(OUT / "source/atlas32.png"))
+    parser.add_argument("--only-effects", action="store_true", help="Import throw/burst frames; preserve all Entity PNGs")
     parser.add_argument("--only-crafting", action="store_true", help="Import dedicated crafting sprites; preserve the original 64 PNGs")
     parser.add_argument("--only-simple", action="store_true", help="Update only the six simple terrain tiles; preserve other PNGs")
     parser.add_argument("--validate-only", action="store_true", help="Preserve sprites; validate and rebuild manifest/index/previews")
     options = parser.parse_args()
-    assert not (options.only_simple and options.only_crafting), "Choose one import subset"
+    assert sum([options.only_simple, options.only_crafting, options.only_effects]) <= 1, "Choose one import subset"
     source = Path(options.source).resolve()
     recipe_path = OUT / "source/simple_terrain/recipe.json"
     overrides = {t["id"]: t for t in json.loads(recipe_path.read_text())["tiles"]} if recipe_path.exists() else {}
@@ -46,8 +93,9 @@ def main():
     dedicated_path = OUT / "source/crafting/recipe.json"
     dedicated = json.loads(dedicated_path.read_text())["tiles"] if dedicated_path.exists() else {}
     assert not (set(aliases) & set(dedicated)), "Alias/dedicated mappings overlap"
-    assert len(paths) >= 64, "Original atlas definitions are required"
-    assert len(paths) == 64 + len(aliases) + len(dedicated), "Additional definitions need an explicit source mapping"
+    layout = json.loads((OUT / "source/atlas32-layout.json").read_text())["cells"]
+    assert len(layout) == 64, "Original atlas cell mapping must remain stable"
+    assert not (set(layout) & set(dedicated)), "Atlas/dedicated mappings overlap"
     width, height = map(int, magick("identify", "-format", "%w %h", source).split())
     assert width == height
     OUT.mkdir(parents=True, exist_ok=True)
@@ -66,11 +114,12 @@ def main():
             target = OUT / category / f"{entity_id}.png"
             if entity_id in aliases:
                 target = OUT / category / f"{aliases[entity_id]}.png"
-            assert i < 64 or entity_id in aliases or entity_id in dedicated, entity_id
+            assert entity_id in layout or entity_id in aliases or entity_id in dedicated, entity_id
             target.parent.mkdir(exist_ok=True)
-            x, y = round(i % 8 * width / 8), round(i // 8 * height / 8)
-            w, h = round((i % 8 + 1) * width / 8)-x, round((i // 8 + 1) * height / 8)-y
-            selected = ((not options.only_simple or entity_id in overrides)
+            source_x, source_y = layout.get(entity_id, [0, 0])
+            x, y = round(source_x * width / 8), round(source_y * height / 8)
+            w, h = round((source_x + 1) * width / 8)-x, round((source_y + 1) * height / 8)-y
+            selected = (not options.only_effects and (not options.only_simple or entity_id in overrides)
                         and (not options.only_crafting or entity_id in dedicated))
             if not options.validate_only and entity_id not in aliases and selected:
                 tile_source, crop, tile_swatches = source, f"{w}x{h}+{x}+{y}", swatches
@@ -126,6 +175,8 @@ def main():
             entries.append(dict(id=entity_id, name=name, category=category, definition=path,
                                 file=target.relative_to(OUT).as_posix(), atlas_cell=[i % 8, i // 8],
                                 opaque_pixels=visible, transparent_pixels=1024-visible))
+            if entity_id in layout:
+                entries[-1]["source_atlas_cell"] = layout[entity_id]
             if entity_id in dedicated:
                 entries[-1]["source_override"] = dedicated[entity_id]["source"]
                 entries[-1]["dedicated_texture"] = True
@@ -170,13 +221,15 @@ def main():
             magick("montage", *[p for e, p in zip(entries, composites) if e["id"] in dedicated],
                    "-tile", "7x", "-geometry", "32x32+2+2", "-background", "#1a2023", crafting_composite)
             magick(crafting_composite, "-filter", "point", "-resize", "800%", OUT / "crafting_composite_preview.png")
+    effects = import_effects(options, allowed, palette)
     metadata = dict(tile_size=[32, 32], palette="../../document/color_thema/palette.json",
-                    atlas="atlas.png", atlas_columns=8, entries=entries)
+                    atlas="atlas.png", atlas_columns=8, entries=entries, effects=effects)
     (OUT / "manifest.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
     cards = []
     for e in entries:
         cards.append(f'<figure><div class="tile"><img src="{e["file"]}"></div>'
                      f'<figcaption>{e["name"]}<br><code>{e["id"]}</code>{"<br>既存画像の仮流用" if "source_alias" in e else ""}</figcaption></figure>')
+    effect_cards = [f'<figure><div class="tile"><img src="{e["file"]}"></div><figcaption>{e["name"]}<br><code>{e["id"]}</code></figcaption></figure>' for e in effects]
     html = '''<!doctype html><html lang="ja"><meta charset="utf-8"><title>Entity textures · Ash & Rust 32</title>
 <style>body{background:#0e1113;color:#d0cdbb;font:16px sans-serif;margin:32px}h1{color:#f0e6cc}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
@@ -189,10 +242,11 @@ figcaption{margin-top:8px}code{font-size:12px}button{margin:0 8px 20px 0;padding
 <button onclick="document.body.dataset.bg=''">透過チェッカー</button>
 <button onclick="document.body.dataset.bg='field'">野原に重ねる</button>
 <button onclick="document.body.dataset.bg='road'">道に重ねる</button>
-<div class="grid">''' + "\n".join(cards) + "</div></html>\n"
+<div class="grid">''' + "\n".join(cards) + f'</div><h2>投擲・射撃の演出（{len(effects)}枚）</h2><div class="grid">' + "\n".join(effect_cards) + "</div></html>\n"
     html = html.replace("{count}", str(len(entries)))
     (OUT / "index.html").write_text(html)
     print(f"Validated {len(entries)} sprites: 32x32 RGBA, binary alpha, palette-only visible RGB")
+    print(f"Validated {len(effects)} effect frames: 32x32 RGBA, binary alpha, palette-only visible RGB")
     print("Full tiles:", len(opaque), "/ transparent cutouts:", len(entries)-len(opaque))
 
 

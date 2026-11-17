@@ -455,3 +455,30 @@ fn consuming_carried_material_frees_capacity_before_receiving_output() {
     finish(&mut g);
     assert!(g.entities.values().any(|e|matches!(e,Entity::Item(i) if i.kind=="item.bandage" && i.quantity==2 && i.location==ItemLocation::CarriedBy(p))));
 }
+
+#[test]
+fn dexterity_changes_success_without_changing_recipe_quality_or_requirements() {
+    let mut g = arena();
+    knife(&mut g);
+    storage(&mut g);
+    let p = g.player_id;
+    let recipe = g.recipes[0].clone();
+    g.actor_mut(p).unwrap().kiyousa = 8;
+    let baseline = g.craft_plan(p, &recipe).unwrap();
+    g.actor_mut(p).unwrap().kiyousa = 10;
+    let dexterous = g.craft_plan(p, &recipe).unwrap();
+    assert_eq!(
+        dexterous.success_rate,
+        (baseline.success_rate + 5).min(g.crafting_rules.success_max)
+    );
+    assert_eq!(dexterous.quality_modifier, baseline.quality_modifier);
+    g.actor_mut(p).unwrap().kiyousa = 6;
+    let clumsy = g.craft_plan(p, &recipe).unwrap();
+    assert_eq!(
+        clumsy.success_rate,
+        baseline
+            .success_rate
+            .saturating_sub(5)
+            .max(g.crafting_rules.success_min)
+    );
+}

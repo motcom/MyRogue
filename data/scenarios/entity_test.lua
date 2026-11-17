@@ -18,7 +18,7 @@ label("弾薬 / 投擲",3,8)
 put("ammo.pistol",3,9,50); put("ammo.bolt",7,9,20); put("ammo.rifle",11,9,50)
 put("item.frag_grenade",15,9,5); put("item.flash_grenade",19,9,5)
 label("回復 / 栄養剤",3,10)
-row({"item.bandage","item.syringe","item.vitamins","item.disinfectant"},11,4,3)
+row({"item.bandage","item.syringe","item.vitamins"},11,4,3)
 label("食料 / 飲料",3,13)
 row({"item.apple","item.raw_meat","item.cooked_meat","item.rotten_meat","item.bread",
      "item.carrot","item.cabbage","item.mineral_water","item.dirty_water","item.clean_water"},14,2,3)

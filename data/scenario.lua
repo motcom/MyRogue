@@ -9,7 +9,6 @@ local spawns = {
     { definition_id = "ammo.pistol", quantity=20, position = {x=10,y=10,z=0} },
     { definition_id = "item.sks", position = {x=11,y=10,z=0} },
     { definition_id = "ammo.rifle", quantity=20, position = {x=12,y=10,z=0} },
-    { definition_id = "item.disinfectant", position = {x=8,y=11,z=0} },
     { definition_id = "item.syringe", position = {x=9,y=11,z=0} },
     { definition_id = "item.leather_armor", position = {x=10,y=11,z=0} },
 }

@@ -29,7 +29,7 @@ return {
         materials = {  },
         tool_functions = {  },
         resources = {},
-        throwable = { range = 6, radius = 2, power = 24, kind = "explosive" },
+        throwable = { range = 6, radius = 2, power = 36, kind = "explosive" },
     },
     hooks = {},
 }

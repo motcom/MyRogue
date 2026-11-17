@@ -5,6 +5,7 @@ use crate::{
     game::{Game, Panel},
     japanese::JapanesePrint,
 };
+
 use bracket_lib::prelude as bl;
 impl Game {
     pub(crate) fn reach_weapon(&self) -> Option<Id> {
@@ -170,9 +171,9 @@ impl Game {
                 }
             }
             if let Some(animation) = animation
-                && self.projectiles.len() < 64
+                && self.animations.len() < 64
             {
-                self.projectiles.push_back(animation);
+                self.animations.push_back(animation);
             }
             self.record_attack_exertion(actor);
             Ok(())

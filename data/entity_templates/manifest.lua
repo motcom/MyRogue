@@ -16,7 +16,6 @@ return {
     "data/entity_templates/item/crossbow.lua",
     "data/entity_templates/item/sks.lua",
     "data/entity_templates/item/bandage.lua",
-    "data/entity_templates/item/disinfectant.lua",
     "data/entity_templates/item/syringe.lua",
     "data/entity_templates/item/bread.lua",
     "data/entity_templates/item/mineral_water.lua",

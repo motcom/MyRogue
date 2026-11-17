@@ -7,5 +7,7 @@ return {
     max_level = 100,
     attribute_chance_percent = 25,
     hp_min = 1, hp_max = 10,
+    stamina_min = 1, stamina_max = 5,
+    sanity_min = 1, sanity_max = 10,
     combat_skill_step = 5,
 }

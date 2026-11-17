@@ -1,0 +1,66 @@
+{
+  "source": "source/effects/grenade-sheet.png",
+  "grid": [
+    4,
+    4
+  ],
+  "animations": [
+    {
+      "id": "throw.explosive",
+      "name": "爆発手榴弾・飛翔",
+      "row": 0,
+      "frames": 4
+    },
+    {
+      "id": "throw.flash",
+      "name": "閃光手榴弾・飛翔",
+      "row": 1,
+      "frames": 4
+    },
+    {
+      "id": "burst.explosive",
+      "name": "爆発",
+      "row": 2,
+      "frames": 4
+    },
+    {
+      "id": "burst.flash",
+      "name": "閃光",
+      "row": 3,
+      "frames": 4
+    },
+    {
+      "id": "shot.bullet",
+      "name": "弾丸・8方向",
+      "row": 0,
+      "frames": 8,
+      "source": "source/effects/bullet-sheet.png",
+      "grid": [
+        4,
+        4
+      ]
+    },
+    {
+      "id": "impact.hit",
+      "name": "命中火花",
+      "row": 2,
+      "frames": 4,
+      "source": "source/effects/bullet-sheet.png",
+      "grid": [
+        4,
+        4
+      ]
+    },
+    {
+      "id": "impact.miss",
+      "name": "回避・通過",
+      "row": 3,
+      "frames": 4,
+      "source": "source/effects/bullet-sheet.png",
+      "grid": [
+        4,
+        4
+      ]
+    }
+  ]
+}

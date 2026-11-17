@@ -35,10 +35,8 @@ return {
         body = { "head", "body", "left_arm", "right_arm", "left_leg", "right_leg" },
         attributes = {
             kinryoku = 8,
-            tairyoku = 6,
             subayasa = 10,
             kiyousa = 8,
-            tiryoku = 4,
             seishinryoku = 4,
         },
         skills = {

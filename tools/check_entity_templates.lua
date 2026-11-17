@@ -99,9 +99,11 @@ for _, path in ipairs(files) do
             assert(one_of(part, {"head", "body", "left_arm", "right_arm", "left_leg", "right_leg"}) and not parts[part])
             parts[part] = true
         end
-        for _, name in ipairs({ "kinryoku", "tairyoku", "subayasa", "kiyousa", "tiryoku", "seishinryoku" }) do
+        for _, name in ipairs({ "kinryoku", "subayasa", "kiyousa", "seishinryoku" }) do
             assert(integer(m.attributes[name], 0), "missing attribute: " .. name)
         end
+        for key in pairs(m.attributes) do assert(one_of(key,{"kinryoku","subayasa","kiyousa","seishinryoku"}), "unknown attribute") end
+        assert(m.skills.syakou == nil, "social skill removed")
         assert(type(m.skills) == "table")
         for name, level in pairs(m.skills) do assert(type(name) == "string" and integer(level, 0)) end
         for _, name in ipairs({ "max_length_mm", "max_volume_ml", "max_mass_g" }) do
@@ -112,7 +114,7 @@ for _, path in ipairs(files) do
         combat(m.combat)
         assert(integer(m.attack.base_pv, 0) and m.attack.base_pv <= 30)
         assert(integer(m.attack.strength_cap, 0) and m.attack.strength_cap <= 30)
-        assert(integer(m.sanity, -2147483648) and m.sanity <= 2147483647)
+        assert(integer(m.sanity, 1) and m.sanity <= 1000000)
         assert(type(m.psykick) == "table" and type(m.status) == "table")
         assert(integer(m.attack.range, 1))
         assert(type(m.loadout) == "table" and type(m.needs) == "table")
@@ -205,7 +207,7 @@ for _, path in ipairs(files) do
             local use = item.use
             assert(one_of(use.kind, { "remove_status", "heal", "restore_need", "bandage", "nutrition" }))
             if use.kind == "remove_status" then
-                assert(one_of(use.status_id, { "bleeding", "wound_contamination" }))
+                assert(one_of(use.status_id, { "bleeding" }))
             elseif use.kind == "nutrition" then
                 assert(item.nutrition ~= nil, "nutrition required")
             else

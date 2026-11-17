@@ -27,13 +27,13 @@ Rust の `Entity` enum は `Movable` / `Static` / `Item` の三種類で `match`
 ## entity_document に基づく具体定義
 
 プレイヤーの操作は `document/entity_document/player_entity.md` を優先する。参照元は `document/entity_document/movable_entity.md`、`static_entity.md`、`item_entity.md`。
-現在の定義は78件。下表は既存28件で、以前の追加36件は後述。制作の追加14件（工具7・材料6・収納1）は [Item仕様](entity_document/item_entity.md) を参照。威力・射程・耐久・重量などの値はゲーム用の仮設定。
+現在の定義は77件。下表は既存27件で、以前の追加36件は後述。制作の追加14件（工具7・材料6・収納1）は [Item仕様](entity_document/item_entity.md) を参照。威力・射程・耐久・重量などの値はゲーム用の仮設定。
 
 | 種類 | 定義 |
 | --- | --- |
 | movable（4） | 生存者、グール ワーカー、グール ウォーリア、グール アーチャー |
 | static（6） | 野原、道、石壁、木、池、木の扉 |
-| item（資料の10件） | ナイフ、棍棒、グロック、クロスボウ、SKS、包帯、消毒薬、注射器、パン、ミネラルウォーター |
+| item（資料の9件） | ナイフ、棍棒、グロック、クロスボウ、SKS、包帯、注射器、パン、ミネラルウォーター |
 | 防具 item（1） | 革の鎧 |
 | 補助 item（5） | 拳銃弾、クロスボウボルト、ライフル弾、木材、宝箱 |
 | 既存案から保持（2） | 万力付き作業台、ハンマー |
@@ -41,7 +41,7 @@ Rust の `Entity` enum は `Movable` / `Static` / `Item` の三種類で `match`
 - `movable/`：ワーカーは近接攻撃、ウォーリアは高い耐久と棍棒、アーチャーはクロスボウとボルトを持つ。攻撃可能なら攻撃し、そうでなければ接近。敵も経路もなければ待機する。
 - `static/`：道・石壁・木・池。木は破壊後に木材を二個生成する。池は泳ぎ未対応のため通行不可。
 - `item/`：近接・遠距離武器、消耗品、弾薬、木材。武器の使用は Rust への攻撃要求を返す。
-- 包帯は選択した出血部位を100ターンで止血し、消毒薬はwound_contaminationを取り除く。注射器は内容未指定のため、今回は架空の回復薬入りとして設定。回復条件を満たさない場合には消費しない。
+- 包帯は選択した出血部位を100ターンで止血する。傷の汚染と消毒は採用しない。注射器は内容未指定のため、今回は架空の回復薬入りとして設定。回復条件を満たさない場合には消費しない。
 - パンは三栄養、ミネラルウォーターは水分を回復する。使用者自身への飲食に限定する。
 
 survivor と ghoul は敵対、ghoul 同士は味方という初期ルールを想定する。
@@ -324,3 +324,17 @@ manifestに36件を追加し合計64件とした。近接武器6（大鉈を含�
 ### レベル・経験値・技能成長（2026-11-16）
 
 敵の `movable.experience_reward`、武器の `item.weapon.skill`、共通effect `practice_skill` を追加。調整値は `data/progression.lua`。名前・成長条件・効果・未実装の専用操作とスナップショット項目は[成長仕様](progression.md)を参照。
+
+各設定の実際の接続状況は[パラメータの使用状況](mijisou.md)を参照。
+
+## 精神攻撃・正気度
+
+能力は `kinryoku` / `subayasa` / `kiyousa` / `seishinryoku` の4つを必須とする。`tairyoku` / `tiryoku` と技能 `syakou` は削除済み。初期 `movable.sanity` は1〜1,000,000の整数で、現在値と初期上限を兼ねる。
+
+```lua
+{ type = "sanity_damage", target = event.user, amount = 10 }
+{ type = "psychic_attack", target = event.target, power = 10 }
+```
+
+`sanity_damage` は対象の精神力で被害を軽減する。`psychic_attack` はeffect発行元（または所持者）の精神力で威力を補正してから対象の精神力で軽減する。生存中の可動Entityを対象とし、終了後は拒否する。`amount` は0〜2,000,000、`power` は0〜1,000,000。係数は `data/mental.lua`。同じeffect列の後続処理が失敗すればグール化・ゲームオーバー状態も巻き戻す。
+スナップショットの `sanity` と `stamina` は `{ current, max }`。`ghoul` と実際の `faction` も公開する（`config.movable.faction` は定義時の値）。正気度0の可動Entityはグール化し、プレイヤーなら世界の更新を停止してゲームオーバーとする。標準データに具体的なサイキック能力・発動キー・精神攻撃する敵はまだない。

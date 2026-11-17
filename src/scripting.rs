@@ -1,7 +1,7 @@
 use crate::{
-    config::*,
-    entity::{Grip, Hand, Id},
     game::Game,
+    model::config::*,
+    model::entity::{Grip, Hand, Id},
 };
 use mlua::{Function, HookTriggers, Lua, LuaOptions, LuaSerdeExt, StdLib, Table, Value, VmState};
 use serde::Deserialize;
@@ -23,7 +23,7 @@ pub enum Action {
         delta: i32,
     },
     GhoulTurn {
-        behavior: crate::enemies::GhoulBehavior,
+        behavior: crate::game::enemies::GhoulBehavior,
     },
     OpenItemTarget {
         item: Id,
@@ -197,9 +197,17 @@ pub enum Effect {
         target: Id,
         amount: u32,
     },
+    SanityDamage {
+        target: Id,
+        amount: u32,
+    },
+    PsychicAttack {
+        target: Id,
+        power: u32,
+    },
     PracticeSkill {
         target: Id,
-        skill: crate::progression::SkillKind,
+        skill: crate::game::progression::SkillKind,
     },
     Heal {
         target: Id,
@@ -350,7 +358,7 @@ impl LuaRuntime {
                             )
                         })?;
                     if let Some(armor) =
-                        crate::equipment::body_armor(&definitions[&entry.definition_id])
+                        crate::game::equipment::body_armor(&definitions[&entry.definition_id])
                     {
                         ensure(entry.grip.is_none(), "body armor cannot use hand grip")?;
                         if entry.equipped {
@@ -360,9 +368,10 @@ impl LuaRuntime {
                             )?;
                         }
                     } else if entry.equipped || entry.grip.is_some() {
-                        let hands =
-                            crate::equipment::equipment_hands(&definitions[&entry.definition_id])
-                                .ok_or("loadout item is not equippable")?;
+                        let hands = crate::game::equipment::equipment_hands(
+                            &definitions[&entry.definition_id],
+                        )
+                        .ok_or("loadout item is not equippable")?;
                         let grip = entry.grip.unwrap_or(if hands != WeaponHands::One {
                             Grip::Both
                         } else if m.dominant_hand == Hand::Right {
@@ -420,15 +429,21 @@ impl LuaRuntime {
         runtime.definitions = Arc::new(definitions);
         Ok(runtime)
     }
-    pub fn growth_rules(&self) -> Result<crate::progression::GrowthRules> {
+    pub fn growth_rules(&self) -> Result<crate::game::progression::GrowthRules> {
         let value = self.eval("data/progression.lua")?;
-        let rules: crate::progression::GrowthRules = self.lua.from_value(value)?;
+        let rules: crate::game::progression::GrowthRules = self.lua.from_value(value)?;
         rules.validate()?;
         Ok(rules)
     }
-    pub fn crafting_config(&self) -> Result<crate::crafting::CraftConfig> {
+    pub fn mental_rules(&self) -> Result<crate::game::mental::MentalRules> {
+        let rules: crate::game::mental::MentalRules =
+            self.lua.from_value(self.eval("data/mental.lua")?)?;
+        rules.validate()?;
+        Ok(rules)
+    }
+    pub fn crafting_config(&self) -> Result<crate::game::crafting::CraftConfig> {
         let value = self.eval("data/production/recipes.lua")?;
-        let config: crate::crafting::CraftConfig = self.lua.from_value(value)?;
+        let config: crate::game::crafting::CraftConfig = self.lua.from_value(value)?;
         ensure(
             !config.recipes.is_empty() && config.recipes.len() <= 1000,
             "invalid recipe count",

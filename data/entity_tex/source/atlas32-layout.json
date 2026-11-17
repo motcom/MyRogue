@@ -1,0 +1,261 @@
+{
+  "description": "Original 8x8 atlas source cells, stable across active definition removal or reorder. Inactive art is retained only in this historical atlas.",
+  "cells": {
+    "player.survivor": [
+      0,
+      0
+    ],
+    "monster.ghoul_worker": [
+      1,
+      0
+    ],
+    "monster.ghoul_warrior": [
+      2,
+      0
+    ],
+    "monster.ghoul_archer": [
+      3,
+      0
+    ],
+    "terrain.field": [
+      4,
+      0
+    ],
+    "terrain.road": [
+      5,
+      0
+    ],
+    "obstacle.stone_wall": [
+      6,
+      0
+    ],
+    "obstacle.tree": [
+      7,
+      0
+    ],
+    "obstacle.wooden_door": [
+      0,
+      1
+    ],
+    "terrain.pond": [
+      1,
+      1
+    ],
+    "item.knife": [
+      2,
+      1
+    ],
+    "item.club": [
+      3,
+      1
+    ],
+    "item.glock": [
+      4,
+      1
+    ],
+    "item.crossbow": [
+      5,
+      1
+    ],
+    "item.sks": [
+      6,
+      1
+    ],
+    "item.bandage": [
+      7,
+      1
+    ],
+    "item.disinfectant": [
+      0,
+      2
+    ],
+    "item.syringe": [
+      1,
+      2
+    ],
+    "item.bread": [
+      2,
+      2
+    ],
+    "item.mineral_water": [
+      3,
+      2
+    ],
+    "ammo.pistol": [
+      4,
+      2
+    ],
+    "ammo.bolt": [
+      5,
+      2
+    ],
+    "ammo.rifle": [
+      6,
+      2
+    ],
+    "item.wood": [
+      7,
+      2
+    ],
+    "item.treasure_chest": [
+      0,
+      3
+    ],
+    "facility.workbench": [
+      1,
+      3
+    ],
+    "item.hammer": [
+      2,
+      3
+    ],
+    "item.leather_armor": [
+      3,
+      3
+    ],
+    "item.short_sword": [
+      4,
+      3
+    ],
+    "item.long_sword": [
+      5,
+      3
+    ],
+    "item.bastard_sword": [
+      6,
+      3
+    ],
+    "item.mace": [
+      7,
+      3
+    ],
+    "item.spear": [
+      0,
+      4
+    ],
+    "item.cleaver": [
+      1,
+      4
+    ],
+    "item.ak": [
+      2,
+      4
+    ],
+    "item.m16": [
+      3,
+      4
+    ],
+    "item.apple": [
+      4,
+      4
+    ],
+    "item.raw_meat": [
+      5,
+      4
+    ],
+    "item.cooked_meat": [
+      6,
+      4
+    ],
+    "item.rotten_meat": [
+      7,
+      4
+    ],
+    "item.carrot": [
+      0,
+      5
+    ],
+    "item.cabbage": [
+      1,
+      5
+    ],
+    "item.dirty_water": [
+      2,
+      5
+    ],
+    "item.clean_water": [
+      3,
+      5
+    ],
+    "item.vitamins": [
+      4,
+      5
+    ],
+    "item.frag_grenade": [
+      5,
+      5
+    ],
+    "item.flash_grenade": [
+      6,
+      5
+    ],
+    "terrain.wasteland": [
+      7,
+      5
+    ],
+    "obstacle.table": [
+      0,
+      6
+    ],
+    "obstacle.chair": [
+      1,
+      6
+    ],
+    "obstacle.wooden_wall": [
+      2,
+      6
+    ],
+    "obstacle.conifer": [
+      3,
+      6
+    ],
+    "obstacle.hedge": [
+      4,
+      6
+    ],
+    "obstacle.fence": [
+      5,
+      6
+    ],
+    "obstacle.lamp": [
+      6,
+      6
+    ],
+    "item.shield": [
+      7,
+      6
+    ],
+    "monster.ghoul_runner": [
+      0,
+      7
+    ],
+    "monster.ghoul_butcher": [
+      1,
+      7
+    ],
+    "monster.ghoul_guard": [
+      2,
+      7
+    ],
+    "monster.ghoul_howler": [
+      3,
+      7
+    ],
+    "monster.ghoul_scavenger": [
+      4,
+      7
+    ],
+    "monster.ghoul_stalker": [
+      5,
+      7
+    ],
+    "monster.ghoul_brute": [
+      6,
+      7
+    ],
+    "monster.ghoul_rifleman": [
+      7,
+      7
+    ]
+  }
+}

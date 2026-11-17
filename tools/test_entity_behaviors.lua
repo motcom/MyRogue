@@ -92,16 +92,6 @@ local function use(id, event)
     local self = instance(id)
     return self.config.hooks.on_use(self, ctx, event or {user=1})
 end
-for id, status in pairs({["item.disinfectant"]="wound_contamination"}) do
-    ctx.actor = actor()
-    check(next(use(id)) == nil, "no condition should not consume")
-    ctx.actor.statuses[status] = 0
-    check(next(use(id)) == nil, "inactive condition should not consume")
-    ctx.actor.statuses[status] = 2
-    local effects = use(id).effects
-    check(effects[1].type == "remove_status" and effects[1].status_id == status, "remove correct condition")
-    check(effects[2].type == "consume_item" and effects[2].target == 100 and effects[2].quantity == 1, "consume one dose")
-end
 ctx.actor = actor()
 ctx.actor.bleeding = {left_arm=1,body=0}
 ctx.actor.bandages = {}
@@ -129,7 +119,7 @@ for _, id in ipairs({"item.bread","item.mineral_water"}) do
     check(next(use(id)) == nil, "no benefit should not consume")
     check(next(use(id,{user=2,target=1})) == nil, "affect user only")
 end
-for _, id in ipairs({"item.bandage","item.disinfectant","item.syringe","item.bread","item.mineral_water"}) do
+for _, id in ipairs({"item.bandage","item.syringe","item.bread","item.mineral_water"}) do
     ctx.actor = nil
     check(next(use(id)) == nil, "missing target should not consume")
     ctx.actor = {id=1,category="static"}

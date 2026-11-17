@@ -1,8 +1,8 @@
 use bracket_lib::prelude as bl;
 use bracket_lib::prelude::EMBED;
-use my_rogue::sound::SoundPlayer;
-use my_rogue::textures::TextureCatalog;
-use my_rogue::{config::Result, game::Game};
+use my_rogue::media::sound::SoundPlayer;
+use my_rogue::media::textures::TextureCatalog;
+use my_rogue::{game::Game, model::config::Result};
 use std::path::PathBuf;
 
 struct PlayingGame {
@@ -103,8 +103,11 @@ fn run() -> Result<()> {
         builder
             .with_font("entity-runtime.png", 32, 32)
             .with_sparse_console_no_bg(80, 50, "entity-runtime.png")
+            .with_sparse_console_no_bg(80, 50, "entity-runtime.png")
     } else {
-        builder.with_sparse_console(80, 50, "japanese16x16.png")
+        builder
+            .with_sparse_console(80, 50, "japanese16x16.png")
+            .with_sparse_console_no_bg(80, 50, "japanese16x16.png")
     };
     let mut context = builder
         .with_sparse_console(80, 50, "japanese16x16.png")
@@ -120,8 +123,9 @@ fn run() -> Result<()> {
     if let Some(textures) = textures {
         textures.install(&mut game, 0);
     }
-    game.set_map_consoles(0, 1);
-    context.set_active_console(2);
+    game.set_map_consoles(0, 2);
+    game.set_motion_console(1);
+    context.set_active_console(3);
     let popup_console = context.register_console(bl::SimpleConsole::init(80, 50), 0);
     game.set_popup_console(popup_console);
     bl::INPUT.lock().activate_event_queue();

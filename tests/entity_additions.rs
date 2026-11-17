@@ -81,9 +81,9 @@ fn explosion_falls_off_over_five_by_five_and_consumes_one() {
         .iter()
         .map(|id| g.actor(*id).unwrap().hp.hp)
         .collect();
-    assert_eq!(hp, vec![96, 104, 112, 120]);
+    assert_eq!(hp, vec![84, 96, 108, 120]);
     assert!(!g.entities.contains_key(&grenade));
-    assert_eq!(g.actor(p).unwrap().hp.hp, 52); // corner of 5x5 includes the thrower
+    assert_eq!(g.actor(p).unwrap().hp.hp, 48); // corner of 5x5 includes the thrower
 }
 #[test]
 fn wall_blocks_blast_and_invalid_throw_keeps_item() {
