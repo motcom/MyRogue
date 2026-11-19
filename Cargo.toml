@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+map_gen = { path = "tool/map_gen", default-features = false }
 bracket-lib = { git = "https://github.com/amethyst/bracket-lib", branch = "master" }
 mlua = { version = "0.12.2", features = ["lua54", "vendored", "serde"] }
 serde = { version = "1", features = ["derive"] }

@@ -17,11 +17,21 @@ Rust と bracket-lib で作るローグライク。Lua から Entity の設定�
 cargo run
 ```
 
-既定で、全Entityを試せる左上倉庫のマップが起動します。ウィンドウ表示の場合:
+ターミナルから通常起動すると、`data/map_json` 直下のJSONと既存マップの選択一覧を表示します。番号を入力すると、そのJSONからゲーム内の地形を生成します。Enterだけなら全Entityを試せる左上倉庫のマップです。ウィンドウ表示の場合:
 
 ```sh
 cargo run -- --windowed
 ```
+
+JSONを直接指定して選択を省略する場合:
+
+```sh
+cargo run -- --map-json data/map_json/shape_tiles.json --windowed
+```
+
+JSONの解像度をそのままマップ寸法に使い（最大1024×1024）、表示範囲は最大70×38マスでプレイヤーを追従します。外周には壁を置き、中央に最も近い歩行可能なマスから開始します。生成地形だけのデバッグ用で、敵・アイテムの追加配置はありません。
+地形IDの対応・Seed・プレイヤー設定は [debug_map_json.lua](data/scenarios/debug_map_json.lua) で変更できます。`shape_tiles.json` の `stone_wall` は既存の石壁、`stone_floor` は既存の野原画像へ対応付けています。専用の石床Entity・画像は追加していません。その他のIDは正式なstatic Entity IDを使うか、このLuaへ対応を追加してください。この起動方法にはTerrain Palette付きJSONを使います。
+`--test-map` / `--normal-map` / `--scenario` も選択一覧を省略します。`--check-data`・`--simulate`・標準入力がターミナルでない場合は自動選択を出さず、明示指定がなければ従来のテストマップを使います。`--select-map` で明示的に一覧を出せます（例：`cargo run -- --select-map --check-data`）。
 
 左上の石壁付き倉庫に全試験用アイテムと開始位置、右側に敵11種の個室と爆発試験室、左下に固定物・地形を配置しています。
 配置と試し方は[Entityテストマップ](document/entity_test_map.md)を参照してください。
@@ -151,19 +161,21 @@ WAVは `--root` の指定先（既定はプロジェクト）から読みます�
 ## ノード式マップ生成ツール
 
 本編と独立した [Map Gen](tool/map_gen/README.md) で、ノイズ生成・画像処理ノードを接続して高さマップを作れます。
-bracket-noiseとeguiを使用し、合成・マスク・コントラスト・しきい値・ぼかし・歪み、途中結果/地形の表示、グラフの保存/読込・PNG出力に対応します。
+bracket-noiseとeguiを使用し、シェープ生成・タイル状のランダム配置・通路接続・壁/距離/配置/洞窟/領域分割などのマップ処理・合成・マスク・コントラスト・しきい値・ぼかし・歪み、途中結果/地形の表示、再編集と本編生成で共用する1つのJSONの保存/読込・任意のPNG出力・名前付き数値入力に対応します。
 
 ```sh
 cargo run --manifest-path tool/map_gen/Cargo.toml
 ```
 
-検証用パッケージだけをビルドします。初期状態ではNoise×2→Blend→Levels→Outputのデモを表示します。本編へのマップ適用は行いません。
+初期状態ではNoise×2→Blend→Levels→Outputのデモを表示します。左の役割別ノード一覧から追加し、「マップを保存 / 開く」でJSONを保存・再編集できます。Terrain Paletteノードで色と地形IDを指定し、同じJSONを本編で使う例は `cargo run -- --scenario data/scenarios/map_gen_ids.lua --windowed`。Partitionから扉を配置する例は `data/scenarios/partition_doors.lua`、複数パレットをTerrain Mergeで合成する例は `data/scenarios/terrain_merge.lua` です。詳しくは[同じJSONを本編で使う手順](tool/map_gen/README.md#同じjsonをmy_rogueで使う)を参照してください。
+
+Terrain Paletteでは地形IDごとの境界方式（切断・モザイク・自然な塗りつなぎ・道の接続）を設定できます。2D VIEWの「隣接3×3（9枚）」で周囲8枚との接続を確認し、PNGへ出力できます。[境界設定と本編でのタイル生成](tool/map_gen/README.md#tile-boundaries)を参照してください。サンプルは`tool/map_gen/examples/stitched_tiles.json`と`data/scenarios/stitched_tiles.lua`です。
 
 ## 依存ライブラリ
 
 bracket-lib は GitHub master のコミット `ce9124ad744553b2576e44df44e94b0f72faa8e8` を Cargo.lock に固定。
 描画・入力・視野・弾道の線計算に加え、敵の追跡にゲーム側の重み付きDijkstra、戦闘乱数にシード付きのRandomNumberGeneratorを使用します。乱数生成器の切替前とは同じシードでも戦闘結果が変わりますが、同じ版・同じシード・同じ操作での再現性は維持します。
-地形生成を追加する際はbracket-libのノイズも利用する方針です。現在の試験用マップはLuaの固定配置です。
+地形生成を追加する際はbracket-libのノイズも利用する方針です。既定の試験用マップはLuaの固定配置で、Map GenのJSONから地形を生成するLuaシナリオにも対応します。
 Lua は mlua の lua54 / vendored 機能で組み込むため、ゲームの起動に外部 Lua コマンドは不要です。
 効果音は rodio 0.21.1（playback / wav）で非同期再生します。
 上記 Lua 単体検査のみ LuaJIT が必要です。

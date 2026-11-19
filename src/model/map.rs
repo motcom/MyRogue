@@ -17,8 +17,8 @@ pub struct Map {
 impl Map {
     pub fn new(width: i32, height: i32, depth: i32) -> Result<Self> {
         ensure(
-            (5..=70).contains(&width) && (5..=38).contains(&height) && depth == 1,
-            "initial map supports 5..70 x 5..38 x 1",
+            (5..=1024).contains(&width) && (5..=1024).contains(&height) && depth == 1,
+            "map supports 5..1024 x 5..1024 x 1",
         )?;
         Ok(Self {
             width,

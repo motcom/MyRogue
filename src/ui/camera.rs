@@ -51,7 +51,7 @@ impl Game {
 
     pub(crate) fn map_camera(&self) -> MapCamera {
         let zoom = i32::from(self.map_zoom);
-        let columns = (self.map.width / zoom).max(1);
+        let columns = (self.map.width.min(70) / zoom).max(1);
         let rows = (crate::ui::theme::MAP_ROWS / zoom)
             .max(1)
             .min(self.map.height);

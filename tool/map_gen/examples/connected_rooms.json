@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "resolution": 256,
+  "extent": 256.0,
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Shape",
+      "position": [
+        30.0,
+        40.0
+      ],
+      "kind": {
+        "type": "shape",
+        "kind": "square",
+        "scale_x": 1.0,
+        "scale_y": 1.0,
+        "rotation": 0.0,
+        "softness": 0.0
+      },
+      "inputs": []
+    },
+    {
+      "id": 2,
+      "name": "Tile Sampler",
+      "position": [
+        290.0,
+        40.0
+      ],
+      "kind": {
+        "type": "tile_sampler",
+        "count_x": 4,
+        "count_y": 3,
+        "scale": 0.58,
+        "scale_x": 1.0,
+        "scale_y": 1.0,
+        "scale_random": 0.25,
+        "position_random_x": 0.3,
+        "position_random_y": 0.3,
+        "rotation": 0.0,
+        "rotation_random": 0.0,
+        "seed": 42
+      },
+      "inputs": [
+        1
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Connect Regions",
+      "position": [
+        550.0,
+        40.0
+      ],
+      "kind": {
+        "type": "connect_regions",
+        "width": 3,
+        "cutoff": 0.5,
+        "distortion": 0.02,
+        "frequency": 1.5,
+        "seed": 42,
+        "include_source": true
+      },
+      "inputs": [
+        2
+      ],
+      "parameters": {
+        "width": 5
+      }
+    },
+    {
+      "id": 4,
+      "name": "Output",
+      "position": [
+        810.0,
+        40.0
+      ],
+      "kind": {
+        "type": "output"
+      },
+      "inputs": [
+        3
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Corridor Width",
+      "position": [
+        290.0,
+        380.0
+      ],
+      "kind": {
+        "type": "input",
+        "key": "corridor_width",
+        "mode": "range",
+        "value": 3.0,
+        "min": 1.0,
+        "max": 12.0,
+        "preview": 3.0,
+        "random": false,
+        "integer": true
+      },
+      "inputs": []
+    }
+  ],
+  "output": 4
+}

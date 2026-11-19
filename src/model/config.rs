@@ -623,6 +623,8 @@ fn one() -> u32 {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Scenario {
     #[serde(default)]
+    pub map_generator: Option<MapGenerator>,
+    #[serde(default)]
     pub labels: Vec<MapLabel>,
     pub width: i32,
     pub height: i32,
@@ -631,6 +633,30 @@ pub struct Scenario {
     pub boundary: String,
     pub player: Spawn,
     pub spawns: Vec<Spawn>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MapGenerator {
+    /// Optional world chunk coordinate. Enables stitched edges and omits the scenario perimeter wall.
+    #[serde(default)]
+    pub tile: Option<[i32; 2]>,
+    pub json: String,
+    #[serde(default)]
+    pub inputs: BTreeMap<String, f64>,
+    /// Ascending inclusive upper bounds; the last band must end at 1.
+    #[serde(default)]
+    pub terrain: Vec<MapTerrainBand>,
+    /// Optional map ID aliases; otherwise IDs are Entity definition IDs directly.
+    #[serde(default)]
+    pub ids: BTreeMap<String, String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MapTerrainBand {
+    pub max: f32,
+    pub definition_id: String,
 }
 
 fn default_sanity() -> u32 {

@@ -151,7 +151,7 @@ impl Game {
         if let Some(p) = self.position(active_entity) {
             self.map_highlight(ctx, p, bl::RGB::named(crate::ui::theme::DANGER));
         }
-        let top = self.map.height + 4;
+        let top = self.map.height.min(crate::ui::theme::MAP_ROWS) + 4;
         crate::ui::theme::draw_box(
             ctx,
             0,

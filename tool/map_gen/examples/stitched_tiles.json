@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "resolution": 32,
+  "extent": 32.0,
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Biome noise",
+      "position": [
+        30.0,
+        40.0
+      ],
+      "kind": {
+        "type": "noise",
+        "kind": "simplex",
+        "seed": 42,
+        "frequency": 0.1,
+        "octaves": 3,
+        "gain": 0.5,
+        "lacunarity": 2.0
+      },
+      "inputs": []
+    },
+    {
+      "id": 2,
+      "name": "Terrain boundary rules",
+      "position": [
+        290.0,
+        40.0
+      ],
+      "kind": {
+        "type": "terrain",
+        "bands": [
+          {
+            "max": 0.36,
+            "id": "terrain.pond",
+            "color": [
+              34,
+              70,
+              93
+            ],
+            "seam": {
+              "mode": "fill",
+              "width": 6
+            }
+          },
+          {
+            "max": 0.52,
+            "id": "terrain.field",
+            "color": [
+              94,
+              122,
+              80
+            ],
+            "seam": {
+              "mode": "mosaic",
+              "width": 6
+            }
+          },
+          {
+            "max": 0.7,
+            "id": "terrain.wasteland",
+            "color": [
+              134,
+              128,
+              115
+            ],
+            "seam": {
+              "mode": "fill",
+              "width": 6
+            }
+          },
+          {
+            "max": 1.0,
+            "id": "obstacle.stone_wall",
+            "color": [
+              75,
+              74,
+              69
+            ],
+            "seam": {
+              "mode": "cut",
+              "width": 6
+            }
+          }
+        ]
+      },
+      "inputs": [
+        1
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Road direction",
+      "position": [
+        30.0,
+        400.0
+      ],
+      "kind": {
+        "type": "input",
+        "key": "road_angle",
+        "mode": "range",
+        "value": 0.0,
+        "min": -20.0,
+        "max": 20.0,
+        "preview": 0.0,
+        "random": true,
+        "integer": false
+      },
+      "inputs": []
+    },
+    {
+      "id": 4,
+      "name": "Road strip",
+      "position": [
+        290.0,
+        400.0
+      ],
+      "kind": {
+        "type": "shape",
+        "kind": "square",
+        "scale_x": 1.0,
+        "scale_y": 0.08,
+        "rotation": 0.0,
+        "softness": 0.0
+      },
+      "inputs": [],
+      "parameters": {
+        "rotation": 3
+      }
+    },
+    {
+      "id": 5,
+      "name": "Transparent outside road",
+      "position": [
+        550.0,
+        400.0
+      ],
+      "kind": {
+        "type": "black_to_alpha"
+      },
+      "inputs": [
+        4
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Connect matching roads",
+      "position": [
+        810.0,
+        400.0
+      ],
+      "kind": {
+        "type": "terrain",
+        "bands": [
+          {
+            "max": 1.0,
+            "id": "terrain.road",
+            "color": [
+              171,
+              152,
+              106
+            ],
+            "seam": {
+              "mode": "road",
+              "width": 8
+            }
+          }
+        ]
+      },
+      "inputs": [
+        5
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Combined terrain",
+      "position": [
+        1070.0,
+        40.0
+      ],
+      "kind": {
+        "type": "terrain_merge",
+        "cutoff": 0.5
+      },
+      "inputs": [
+        2,
+        6,
+        null
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Output",
+      "position": [
+        1330.0,
+        40.0
+      ],
+      "kind": {
+        "type": "output"
+      },
+      "inputs": [
+        7
+      ]
+    }
+  ],
+  "output": 8
+}

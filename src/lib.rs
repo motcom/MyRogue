@@ -2,6 +2,7 @@
 //! ルートの再公開は既存の利用側・統合テスト向けの互換パス。
 
 pub mod game;
+pub mod map_generation;
 pub mod media;
 pub mod model;
 pub mod scripting;

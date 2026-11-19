@@ -92,7 +92,7 @@ impl Game {
         parts.join(" / ")
     }
     pub(crate) fn footing_lines(&self) -> Vec<String> {
-        let width = (76 - self.map.width).max(1) as usize;
+        let width = (76 - self.map.width.min(70)).max(1) as usize;
         self.footing_entries()
             .into_iter()
             .flat_map(|(_, text)| wrap_description(&text, width))
@@ -115,7 +115,7 @@ impl Game {
         Ok(())
     }
     pub(crate) fn render_footing(&self, ctx: &mut bl::BTerm) {
-        let x = self.map.width + 2;
+        let x = self.map.width.min(70) + 2;
         let count = self.footing_entries().len();
         let lines = self.footing_lines();
         let page = self.footing_page_size();

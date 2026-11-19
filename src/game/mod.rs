@@ -238,9 +238,51 @@ impl Game {
     pub fn load_test_map(root: &Path) -> Result<Self> {
         Self::load_scenario(root, "data/scenarios/entity_test.lua")
     }
-    fn load_scenario(root: &Path, path: &str) -> Result<Self> {
+    pub fn load_scenario(root: &Path, path: &str) -> Result<Self> {
         let runtime = Rc::new(LuaRuntime::load(root)?);
         let scenario = runtime.scenario_file(path)?;
+        Self::from_scenario(root, runtime, scenario, false)
+    }
+
+    /// Debug entry point: Lua owns terrain aliases and defaults; JSON owns geometry.
+    pub fn load_map_json(root: &Path, path: &str) -> Result<Self> {
+        let runtime = Rc::new(LuaRuntime::load(root)?);
+        let mut scenario = runtime.scenario_file("data/scenarios/debug_map_json.lua")?;
+        let canonical_root = root.canonicalize()?;
+        let json_path = root.join(path).canonicalize()?;
+        ensure(
+            json_path.starts_with(&canonical_root),
+            "map JSON path escaped project root",
+        )?;
+        let graph = map_gen::load(&json_path)?;
+        scenario.width = graph.resolution as i32;
+        scenario.height = graph.resolution as i32;
+        scenario.player.position = Pos {
+            x: scenario.width / 2,
+            y: scenario.height / 2,
+            z: 0,
+        };
+        let generator = scenario
+            .map_generator
+            .as_mut()
+            .ok_or("debug map_generator missing")?;
+        generator.json = path.to_owned();
+        // Alias tables may cover several debug maps. Keep only IDs used by this output.
+        let image = map_gen::generate(&graph, scenario.seed, &generator.inputs)?;
+        if let Some(palette) = &image.terrain {
+            generator
+                .ids
+                .retain(|id, _| palette.bands.iter().any(|band| &band.id == id));
+        }
+        Self::from_scenario(root, runtime, scenario, true)
+    }
+
+    fn from_scenario(
+        root: &Path,
+        runtime: Rc<LuaRuntime>,
+        mut scenario: Scenario,
+        auto_spawn: bool,
+    ) -> Result<Self> {
         let crafting = runtime.crafting_config()?;
         ensure(scenario.labels.len() <= 100, "too many map labels")?;
         for label in &scenario.labels {
@@ -313,22 +355,54 @@ impl Game {
                 .is_some_and(|d| d.category == "static" && d.common.collision.movement),
             "boundary must be blocking static",
         )?;
+        let generated = scenario
+            .map_generator
+            .as_ref()
+            .map(|config| {
+                crate::map_generation::terrain_spawns(
+                    root,
+                    config,
+                    &world.map,
+                    scenario.seed,
+                    &world.entity_definitions,
+                )
+            })
+            .transpose()?;
         for y in 0..world.map.height {
             for x in 0..world.map.width {
                 let p = Pos { x, y, z: 0 };
                 world.spawn(&scenario.ground, Some(p), None, 1)?;
-                if x == 0 || y == 0 || x == world.map.width - 1 || y == world.map.height - 1 {
+                if !scenario
+                    .map_generator
+                    .as_ref()
+                    .is_some_and(|g| g.tile.is_some())
+                    && (x == 0 || y == 0 || x == world.map.width - 1 || y == world.map.height - 1)
+                {
                     world.spawn(&scenario.boundary, Some(p), None, 1)?;
                 }
             }
         }
-        for spawn in scenario.spawns {
+        for spawn in generated
+            .into_iter()
+            .flatten()
+            .filter(|spawn| spawn.definition_id != scenario.ground)
+            .chain(scenario.spawns)
+        {
             world.spawn(
                 &spawn.definition_id,
                 Some(spawn.position),
                 None,
                 spawn.quantity,
             )?;
+        }
+        if auto_spawn {
+            let center = scenario.player.position;
+            scenario.player.position = (1..world.map.height - 1)
+                .flat_map(|y| (1..world.map.width - 1).map(move |x| Pos { x, y, z: 0 }))
+                .filter(|&p| world.can_enter(p, 0))
+                .min_by_key(|p| (p.x - center.x).pow(2) + (p.y - center.y).pow(2))
+                .ok_or("JSONマップにプレイヤーが歩ける開始位置がありません")?;
+            world.respawn_position = scenario.player.position;
         }
         ensure(
             world.can_enter(scenario.player.position, 0),

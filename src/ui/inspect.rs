@@ -161,7 +161,7 @@ impl Game {
 
     pub(crate) fn render_inspection(&self, ctx: &mut bl::BTerm, position: Pos, selected: usize) {
         self.map_highlight(ctx, position, bl::RGB::named(crate::ui::theme::ACCENT));
-        let top = self.map.height + 4;
+        let top = self.map.height.min(crate::ui::theme::MAP_ROWS) + 4;
         crate::ui::theme::draw_box(
             ctx,
             0,

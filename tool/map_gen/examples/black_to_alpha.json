@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "resolution": 32,
+  "extent": 32.0,
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Room / floor mask",
+      "position": [
+        40.0,
+        40.0
+      ],
+      "kind": {
+        "type": "shape",
+        "kind": "circle",
+        "scale_x": 0.8,
+        "scale_y": 0.8,
+        "rotation": 0.0,
+        "softness": 0.0
+      },
+      "inputs": []
+    },
+    {
+      "id": 2,
+      "name": "Black to Alpha",
+      "position": [
+        350.0,
+        40.0
+      ],
+      "kind": {
+        "type": "black_to_alpha"
+      },
+      "inputs": [
+        1
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Output",
+      "position": [
+        660.0,
+        40.0
+      ],
+      "kind": {
+        "type": "output"
+      },
+      "inputs": [
+        2
+      ]
+    }
+  ],
+  "output": 3
+}

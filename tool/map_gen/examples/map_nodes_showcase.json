@@ -1,0 +1,390 @@
+{
+  "schema_version": 1,
+  "resolution": 256,
+  "extent": 256.0,
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Room Shape",
+      "kind": {
+        "type": "shape",
+        "kind": "square",
+        "scale_x": 1.0,
+        "scale_y": 1.0,
+        "rotation": 0.0,
+        "softness": 0.0
+      },
+      "inputs": [],
+      "position": [
+        20.0,
+        40.0
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Rooms",
+      "kind": {
+        "type": "tile_sampler",
+        "count_x": 4,
+        "count_y": 3,
+        "scale": 0.58,
+        "scale_x": 1.0,
+        "scale_y": 1.0,
+        "scale_random": 0.25,
+        "position_random_x": 0.3,
+        "position_random_y": 0.3,
+        "rotation": 0.0,
+        "rotation_random": 0.0,
+        "seed": 42
+      },
+      "inputs": [
+        1
+      ],
+      "position": [
+        280.0,
+        40.0
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Corridors Only",
+      "kind": {
+        "type": "connect_regions",
+        "width": 3,
+        "cutoff": 0.5,
+        "distortion": 0.02,
+        "frequency": 1.5,
+        "seed": 42,
+        "include_source": false
+      },
+      "inputs": [
+        2
+      ],
+      "position": [
+        540.0,
+        40.0
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Walkable",
+      "kind": {
+        "type": "blend",
+        "mode": "max",
+        "opacity": 1.0
+      },
+      "inputs": [
+        2,
+        3,
+        null
+      ],
+      "position": [
+        800.0,
+        40.0
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Expand / Erode",
+      "kind": {
+        "type": "map",
+        "operation": "morphology",
+        "cutoff": 0.5,
+        "mode": "dilate",
+        "radius": 2
+      },
+      "inputs": [
+        4
+      ],
+      "position": [
+        1060.0,
+        40.0
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Walls",
+      "kind": {
+        "type": "map",
+        "operation": "outline",
+        "cutoff": 0.5,
+        "width": 2
+      },
+      "inputs": [
+        4
+      ],
+      "position": [
+        1320.0,
+        40.0
+      ],
+      "parameters": {
+        "width": 20
+      }
+    },
+    {
+      "id": 7,
+      "name": "Wall Clearance",
+      "kind": {
+        "type": "map",
+        "operation": "distance",
+        "cutoff": 0.5,
+        "range": 16.0,
+        "inside": true
+      },
+      "inputs": [
+        4
+      ],
+      "position": [
+        1060.0,
+        380.0
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Placement Points",
+      "kind": {
+        "type": "map",
+        "operation": "scatter",
+        "cutoff": 0.5,
+        "count": 24,
+        "min_distance": 12.0,
+        "radius": 2,
+        "seed": 42
+      },
+      "inputs": [
+        7
+      ],
+      "position": [
+        1320.0,
+        380.0
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Door Candidates",
+      "kind": {
+        "type": "map",
+        "operation": "entrances",
+        "cutoff": 0.5,
+        "width": 3,
+        "spacing": 8.0
+      },
+      "inputs": [
+        2,
+        3
+      ],
+      "position": [
+        540.0,
+        380.0
+      ]
+    },
+    {
+      "id": 10,
+      "name": "Extra Loop Paths",
+      "kind": {
+        "type": "map",
+        "operation": "extra_connections",
+        "cutoff": 0.5,
+        "count": 2,
+        "width": 3,
+        "distortion": 0.02,
+        "frequency": 1.5,
+        "seed": 42,
+        "include_source": true
+      },
+      "inputs": [
+        2,
+        3
+      ],
+      "position": [
+        800.0,
+        380.0
+      ],
+      "parameters": {
+        "count": 19
+      }
+    },
+    {
+      "id": 11,
+      "name": "Large Rooms",
+      "kind": {
+        "type": "map",
+        "operation": "select_regions",
+        "cutoff": 0.5,
+        "min_area": 900,
+        "max_area": 4096,
+        "largest_only": false
+      },
+      "inputs": [
+        2
+      ],
+      "position": [
+        280.0,
+        380.0
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Cave",
+      "kind": {
+        "type": "map",
+        "operation": "cellular",
+        "cutoff": 0.5,
+        "iterations": 4,
+        "birth_limit": 5,
+        "survival_limit": 4
+      },
+      "inputs": [
+        16
+      ],
+      "position": [
+        540.0,
+        720.0
+      ]
+    },
+    {
+      "id": 13,
+      "name": "Subdivided Building",
+      "kind": {
+        "type": "map",
+        "operation": "partition",
+        "cutoff": 0.5,
+        "min_size": 24,
+        "depth": 3,
+        "wall_width": 3,
+        "seed": 42
+      },
+      "inputs": [
+        17
+      ],
+      "position": [
+        1060.0,
+        720.0
+      ]
+    },
+    {
+      "id": 14,
+      "name": "Reachable From Room",
+      "kind": {
+        "type": "map",
+        "operation": "reachable",
+        "cutoff": 0.5,
+        "start_x": 32,
+        "start_y": 42
+      },
+      "inputs": [
+        4
+      ],
+      "position": [
+        1320.0,
+        720.0
+      ]
+    },
+    {
+      "id": 15,
+      "name": "Cave Noise",
+      "kind": {
+        "type": "noise",
+        "kind": "white",
+        "seed": 42,
+        "frequency": 0.1,
+        "octaves": 4,
+        "gain": 0.5,
+        "lacunarity": 2.0
+      },
+      "inputs": [],
+      "position": [
+        20.0,
+        720.0
+      ]
+    },
+    {
+      "id": 16,
+      "name": "Cave Initial Mask",
+      "kind": {
+        "type": "threshold",
+        "cutoff": 0.48,
+        "softness": 0.0
+      },
+      "inputs": [
+        15
+      ],
+      "position": [
+        280.0,
+        720.0
+      ]
+    },
+    {
+      "id": 17,
+      "name": "Building Boundary",
+      "kind": {
+        "type": "shape",
+        "kind": "square",
+        "scale_x": 0.9,
+        "scale_y": 0.8,
+        "rotation": 0.0,
+        "softness": 0.0
+      },
+      "inputs": [],
+      "position": [
+        800.0,
+        720.0
+      ]
+    },
+    {
+      "id": 18,
+      "name": "Output",
+      "kind": {
+        "type": "output"
+      },
+      "inputs": [
+        10
+      ],
+      "position": [
+        1580.0,
+        380.0
+      ]
+    },
+    {
+      "id": 19,
+      "name": "extra_count",
+      "kind": {
+        "type": "input",
+        "key": "extra_count",
+        "mode": "range",
+        "value": 2.0,
+        "min": 0.0,
+        "max": 8.0,
+        "preview": 2.0,
+        "integer": true,
+        "random": false
+      },
+      "inputs": [],
+      "position": [
+        540.0,
+        1060.0
+      ]
+    },
+    {
+      "id": 20,
+      "name": "wall_width",
+      "kind": {
+        "type": "input",
+        "key": "wall_width",
+        "mode": "range",
+        "value": 2.0,
+        "min": 1.0,
+        "max": 8.0,
+        "preview": 2.0,
+        "integer": true,
+        "random": false
+      },
+      "inputs": [],
+      "position": [
+        1060.0,
+        1060.0
+      ]
+    }
+  ],
+  "output": 18
+}

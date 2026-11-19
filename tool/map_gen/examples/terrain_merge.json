@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "resolution": 32,
+  "extent": 32.0,
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Floor source",
+      "position": [
+        30,
+        40
+      ],
+      "kind": {
+        "type": "constant",
+        "value": 1.0
+      },
+      "inputs": []
+    },
+    {
+      "id": 2,
+      "name": "Floor Palette",
+      "position": [
+        290,
+        40
+      ],
+      "kind": {
+        "type": "terrain",
+        "bands": [
+          {
+            "max": 1.0,
+            "id": "terrain.road",
+            "color": [
+              171,
+              152,
+              106
+            ]
+          }
+        ]
+      },
+      "inputs": [
+        1
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Room",
+      "position": [
+        30,
+        400
+      ],
+      "kind": {
+        "type": "shape",
+        "kind": "circle",
+        "scale_x": 0.8,
+        "scale_y": 0.8,
+        "rotation": 0.0,
+        "softness": 0.0
+      },
+      "inputs": []
+    },
+    {
+      "id": 4,
+      "name": "Wall mask",
+      "position": [
+        290,
+        400
+      ],
+      "kind": {
+        "type": "invert"
+      },
+      "inputs": [
+        3
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Wall Palette",
+      "position": [
+        550,
+        400
+      ],
+      "kind": {
+        "type": "terrain",
+        "bands": [
+          {
+            "max": 0.5,
+            "id": "terrain.field",
+            "color": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "max": 1.0,
+            "id": "obstacle.stone_wall",
+            "color": [
+              75,
+              74,
+              69
+            ]
+          }
+        ]
+      },
+      "inputs": [
+        4
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Transparent room",
+      "position": [
+        810,
+        400
+      ],
+      "kind": {
+        "type": "black_to_alpha"
+      },
+      "inputs": [
+        5
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Floor + Walls",
+      "position": [
+        1070,
+        40
+      ],
+      "kind": {
+        "type": "terrain_merge",
+        "cutoff": 0.5
+      },
+      "inputs": [
+        2,
+        6,
+        null
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Output",
+      "position": [
+        1330,
+        40
+      ],
+      "kind": {
+        "type": "output"
+      },
+      "inputs": [
+        7
+      ]
+    }
+  ],
+  "output": 8
+}

@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "resolution": 32,
+  "extent": 32.0,
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Room / floor mask",
+      "position": [
+        40.0,
+        40.0
+      ],
+      "kind": {
+        "type": "shape",
+        "kind": "circle",
+        "scale_x": 0.8,
+        "scale_y": 0.8,
+        "rotation": 0.0,
+        "softness": 0.0
+      },
+      "inputs": []
+    },
+    {
+      "id": 2,
+      "name": "Final terrain",
+      "position": [
+        350.0,
+        40.0
+      ],
+      "kind": {
+        "type": "output"
+      },
+      "inputs": [
+        1
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Terrain IDs and colors",
+      "position": [
+        660.0,
+        40.0
+      ],
+      "kind": {
+        "type": "terrain",
+        "bands": [
+          {
+            "max": 0.5,
+            "id": "obstacle.stone_wall",
+            "color": [
+              75,
+              74,
+              69
+            ]
+          },
+          {
+            "max": 1.0,
+            "id": "terrain.road",
+            "color": [
+              171,
+              152,
+              106
+            ]
+          }
+        ]
+      },
+      "inputs": [
+        2
+      ]
+    }
+  ],
+  "output": 3
+}

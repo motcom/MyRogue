@@ -3,9 +3,18 @@ name = "map_gen"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["editor"]
+editor = ["dep:eframe", "dep:image"]
+
+[[bin]]
+name = "map_gen"
+path = "src/main.rs"
+required-features = ["editor"]
+
 [dependencies]
 bracket-noise = { git = "https://github.com/amethyst/bracket-lib", rev = "ce9124ad744553b2576e44df44e94b0f72faa8e8" }
-eframe = { version = "0.37.0", default-features = false, features = ["default_fonts", "glow", "x11", "wayland"] }
+eframe = { optional = true, version = "0.37.0", default-features = false, features = ["default_fonts", "glow", "x11", "wayland"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-image = { version = "0.24.9", default-features = false, features = ["png"] }
+image = { optional = true, version = "0.24.9", default-features = false, features = ["png"] }

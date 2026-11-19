@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "resolution": 256,
+  "extent": 256.0,
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Shape",
+      "position": [
+        30.0,
+        40.0
+      ],
+      "kind": {
+        "type": "shape",
+        "kind": "square",
+        "scale_x": 0.9,
+        "scale_y": 0.9,
+        "rotation": 0.0,
+        "softness": 0.05
+      },
+      "inputs": []
+    },
+    {
+      "id": 2,
+      "name": "Tile Sampler",
+      "position": [
+        290.0,
+        40.0
+      ],
+      "kind": {
+        "type": "tile_sampler",
+        "count_x": 6,
+        "count_y": 8,
+        "scale": 0.85,
+        "scale_x": 1.0,
+        "scale_y": 1.0,
+        "scale_random": 0.55,
+        "position_random_x": 0.8,
+        "position_random_y": 0.8,
+        "rotation": 0.0,
+        "rotation_random": 45.0,
+        "seed": 42
+      },
+      "inputs": [
+        1
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Output",
+      "position": [
+        550.0,
+        40.0
+      ],
+      "kind": {
+        "type": "output"
+      },
+      "inputs": [
+        2
+      ]
+    }
+  ],
+  "output": 3
+}

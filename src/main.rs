@@ -3,7 +3,10 @@ use bracket_lib::prelude::EMBED;
 use my_rogue::media::sound::SoundPlayer;
 use my_rogue::media::textures::TextureCatalog;
 use my_rogue::{game::Game, model::config::Result};
+use std::io::IsTerminal;
 use std::path::PathBuf;
+
+mod startup;
 
 struct PlayingGame {
     game: Game,
@@ -30,6 +33,10 @@ fn run() -> Result<()> {
     let mut mute = false;
     let mut ascii = false;
     let mut test_map = true;
+    let mut scenario = None;
+    let mut map_json = None;
+    let mut select_map = false;
+    let mut explicit_map = false;
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
@@ -38,8 +45,33 @@ fn run() -> Result<()> {
                 root = PathBuf::from(args.get(index).ok_or("--root needs a directory")?);
             }
             "--check-data" => check = true,
-            "--test-map" => test_map = true,
-            "--normal-map" => test_map = false,
+            "--scenario" => {
+                explicit_map = true;
+                index += 1;
+                scenario = Some(
+                    args.get(index)
+                        .ok_or("--scenario needs a Lua path")?
+                        .clone(),
+                );
+            }
+            "--map-json" => {
+                explicit_map = true;
+                index += 1;
+                map_json = Some(
+                    args.get(index)
+                        .ok_or("--map-json needs a JSON path")?
+                        .clone(),
+                );
+            }
+            "--select-map" => select_map = true,
+            "--test-map" => {
+                test_map = true;
+                explicit_map = true;
+            }
+            "--normal-map" => {
+                test_map = false;
+                explicit_map = true;
+            }
             "--fullscreen" => fullscreen = true,
             "--windowed" => fullscreen = false,
             "--mute" => mute = true,
@@ -56,7 +88,28 @@ fn run() -> Result<()> {
         }
         index += 1;
     }
-    let mut game = if test_map {
+    if map_json.is_some() && scenario.is_some() {
+        return Err("--map-json と --scenario は同時に指定できません".into());
+    }
+    if select_map
+        || (!explicit_map && !check && simulate.is_none() && std::io::stdin().is_terminal())
+    {
+        if explicit_map {
+            return Err("--select-map とマップ指定オプションは同時に指定できません".into());
+        }
+        match startup::select_map(&root)? {
+            startup::Selection::Test => test_map = true,
+            startup::Selection::Normal => test_map = false,
+            startup::Selection::Json(path) => map_json = Some(path),
+            startup::Selection::Quit => return Ok(()),
+        }
+    }
+    let mut game = if let Some(path) = map_json {
+        println!("マップ生成: {path}");
+        Game::load_map_json(&root, &path)?
+    } else if let Some(path) = scenario {
+        Game::load_scenario(&root, &path)?
+    } else if test_map {
         Game::load_test_map(&root)?
     } else {
         Game::load(&root)?

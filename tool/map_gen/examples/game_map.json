@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "resolution": 32,
+  "extent": 32.0,
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Room / floor mask",
+      "position": [
+        40.0,
+        40.0
+      ],
+      "kind": {
+        "type": "shape",
+        "kind": "circle",
+        "scale_x": 0.8,
+        "scale_y": 0.8,
+        "rotation": 0.0,
+        "softness": 0.0
+      },
+      "inputs": []
+    },
+    {
+      "id": 2,
+      "name": "Final terrain",
+      "position": [
+        350.0,
+        40.0
+      ],
+      "kind": {
+        "type": "output"
+      },
+      "inputs": [
+        1
+      ]
+    }
+  ],
+  "output": 2
+}

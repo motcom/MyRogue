@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "resolution": 64,
+  "extent": 256.0,
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Shape",
+      "position": [
+        -40.97879,
+        40.0
+      ],
+      "kind": {
+        "type": "shape",
+        "kind": "square",
+        "scale_x": 0.9,
+        "scale_y": 0.9,
+        "rotation": 0.0,
+        "softness": 0.05
+      },
+      "inputs": []
+    },
+    {
+      "id": 2,
+      "name": "Tile Sampler",
+      "position": [
+        222.64882,
+        25.95359
+      ],
+      "kind": {
+        "type": "tile_sampler",
+        "count_x": 4,
+        "count_y": 4,
+        "scale": 0.85,
+        "scale_x": 1.0,
+        "scale_y": 1.0,
+        "scale_random": 0.55,
+        "position_random_x": 0.8,
+        "position_random_y": 0.8,
+        "rotation": 0.0,
+        "rotation_random": 45.0,
+        "seed": 42
+      },
+      "inputs": [
+        1
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Connect Regions",
+      "position": [
+        523.2615,
+        -91.50429
+      ],
+      "kind": {
+        "type": "connect_regions",
+        "cutoff": 0.5,
+        "width": 1,
+        "distortion": 0.03,
+        "frequency": 1.5,
+        "seed": 42,
+        "include_source": true
+      },
+      "inputs": [
+        2
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Extra Connections",
+      "position": [
+        659.26996,
+        210.41287
+      ],
+      "kind": {
+        "type": "map",
+        "operation": "extra_connections",
+        "count": 13,
+        "width": 1,
+        "distortion": 0.02,
+        "frequency": 1.5,
+        "seed": 40,
+        "cutoff": 0.5,
+        "include_source": true
+      },
+      "inputs": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Terrain Palette",
+      "position": [
+        969.4819,
+        74.90332
+      ],
+      "kind": {
+        "type": "terrain",
+        "bands": [
+          {
+            "seam": {
+              "mode": "cut",
+              "width": 8
+            },
+            "max": 0.86,
+            "id": "stone_wall",
+            "color": [
+              71,
+              71,
+              71
+            ]
+          },
+          {
+            "seam": {
+              "mode": "cut",
+              "width": 8
+            },
+            "max": 1.0,
+            "id": "stone_floor",
+            "color": [
+              220,
+              221,
+              213
+            ]
+          }
+        ]
+      },
+      "inputs": [
+        4
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Output",
+      "position": [
+        1244.446,
+        66.02786
+      ],
+      "kind": {
+        "type": "output"
+      },
+      "inputs": [
+        5
+      ]
+    }
+  ],
+  "output": 6
+}
