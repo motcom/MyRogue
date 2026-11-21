@@ -3,6 +3,9 @@ use crate::{
     game::Game,
     model::entity::{Entity, LuaHookRef, Status},
 };
+
+const NUTRIENT_COST: f32 = 0.25;
+
 impl Game {
     pub(crate) fn record_attack_exertion(&mut self, id: crate::model::entity::Id) {
         if let Some(a) = self.actor_mut(id) {
@@ -21,30 +24,28 @@ impl Game {
             let is_player = id == self.player_id;
             let a = self.actor_mut(id).unwrap();
             a.carbohydrate_usage = a.carbohydrate_usage.saturating_add(1);
-            a.nutrition.carbohydrate = a
-                .nutrition
-                .carbohydrate
-                .saturating_sub(a.carbohydrate_usage / 20);
+            a.nutrition.carbohydrate = (a.nutrition.carbohydrate
+                - (a.carbohydrate_usage / 20) as f32 * NUTRIENT_COST)
+                .max(0.0);
             a.carbohydrate_usage %= 20;
             if consume_nutrition {
-                a.nutrition.vitamin = a.nutrition.vitamin.saturating_sub(1);
+                a.nutrition.vitamin = (a.nutrition.vitamin - NUTRIENT_COST).max(0.0);
             }
             if is_player
                 && !a.running_mode
                 && a.stamina < a.max_stamina
-                && a.nutrition.carbohydrate > 0
+                && a.nutrition.carbohydrate > 0.0
             {
                 let restored = (a.max_stamina - a.stamina).min(5);
                 a.stamina += restored;
                 a.stamina_recovery_usage += restored;
-                a.nutrition.carbohydrate = a
-                    .nutrition
-                    .carbohydrate
-                    .saturating_sub(a.stamina_recovery_usage / 20);
+                a.nutrition.carbohydrate = (a.nutrition.carbohydrate
+                    - (a.stamina_recovery_usage / 20) as f32 * NUTRIENT_COST)
+                    .max(0.0);
                 a.stamina_recovery_usage %= 20;
             }
             let illness = a.respiratory_status();
-            let recovering = a.nutrition.vitamin > 0;
+            let recovering = a.nutrition.vitamin > 0.0;
             let eligible = if recovering {
                 a.illness_turns = 0;
                 illness.is_some()
@@ -98,7 +99,7 @@ impl Game {
             let a = self.actor_mut(id).unwrap();
             if a.can_regenerate() && a.hp.hp < a.hp.max_hp {
                 a.hp.hp += 1;
-                a.nutrition.protein -= 1;
+                a.nutrition.protein = (a.nutrition.protein - NUTRIENT_COST).max(0.0);
             }
         }
     }
@@ -128,7 +129,10 @@ impl Game {
 mod tests {
     use super::*;
     use crate::{
-        model::combat::Rng, model::config::Nutrition, model::entity::InjuryStage, scripting::Action,
+        model::combat::Rng,
+        model::config::{FoodNutrition, Nutrition},
+        model::entity::InjuryStage,
+        scripting::Action,
     };
     fn game() -> Game {
         let mut g = Game::load(std::path::Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
@@ -155,7 +159,7 @@ mod tests {
                 .is_none()
         );
         let mut n = actor.nutrition.clone();
-        n.add(&Nutrition {
+        n.add(&FoodNutrition {
             protein: u32::MAX,
             carbohydrate: 60,
             vitamin: 49,
@@ -163,9 +167,9 @@ mod tests {
         assert_eq!(
             n,
             Nutrition {
-                protein: 100,
-                carbohydrate: 100,
-                vitamin: 99
+                protein: 100.0,
+                carbohydrate: 100.0,
+                vitamin: 99.0
             }
         );
     }
@@ -174,25 +178,25 @@ mod tests {
         let mut g = game();
         let p = g.player_id;
         turns(&mut g, 19);
-        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 50);
-        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 50);
+        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 50.0);
+        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 50.0);
         g.pending_action = Some(Action::OpenInventory);
         g.update();
         g.pending_action = Some(Action::ClosePanel);
         g.update();
         assert_eq!(g.turn, 19);
         g.advance_turn();
-        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 49);
-        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 49);
+        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 49.75);
+        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 49.75);
         turns(&mut g, 20);
-        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 48);
-        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 48);
+        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 49.5);
+        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 49.5);
         let a = g.actor_mut(p).unwrap();
-        a.nutrition.carbohydrate = 0;
-        a.nutrition.vitamin = 0;
-        turns(&mut g, 10);
-        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 0);
-        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 0);
+        a.nutrition.carbohydrate = 0.25;
+        a.nutrition.vitamin = 0.25;
+        turns(&mut g, 40);
+        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 0.0);
+        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 0.0);
     }
     #[test]
     fn movement_has_no_extra_nutrition_cost_and_slow_steps_use_world_time() {
@@ -200,7 +204,7 @@ mod tests {
         let p = g.player_id;
         let origin = g.position(p).unwrap();
         g.player_move(0, 1).unwrap();
-        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 50);
+        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 50.0);
         let blocked = origin.offset(1, 1);
         g.spawn("obstacle.stone_wall", Some(blocked), None, 1)
             .unwrap();
@@ -212,14 +216,14 @@ mod tests {
         g.player_move(0, 1).unwrap();
         g.player_move(0, -1).unwrap();
         assert_eq!(g.turn, 9);
-        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 50);
+        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 50.0);
         g.player_move(0, 1).unwrap();
         assert_eq!(g.turn, 13);
-        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 50);
-        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 50);
+        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 50.0);
+        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 50.0);
         turns(&mut g, 7);
-        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 49);
-        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 49);
+        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 49.75);
+        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 49.75);
     }
     #[test]
     fn attacks_double_carbohydrate_use_and_mix_with_normal_turns() {
@@ -237,7 +241,7 @@ mod tests {
             g.attack_static(wall).unwrap();
         }
         assert_eq!(g.turn, 6);
-        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 50);
+        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 50.0);
         assert_eq!(g.actor(p).unwrap().carbohydrate_usage, 8);
         let far = g
             .spawn("obstacle.stone_wall", Some(origin.offset(5, 0)), None, 1)
@@ -248,24 +252,24 @@ mod tests {
         for _ in 0..6 {
             g.attack_static(wall).unwrap();
         }
-        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 49);
-        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 50);
+        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 49.75);
+        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 50.0);
         for _ in 0..10 {
             g.attack_static(wall).unwrap();
         }
-        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 48);
-        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 49);
+        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 49.5);
+        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 49.75);
     }
     #[test]
     fn vitamin_depletion_switches_disease_checks_to_worsening_on_the_same_turn() {
         let mut g = game();
         let p = g.player_id;
         set_illness(&mut g, "cold");
-        g.actor_mut(p).unwrap().nutrition.vitamin = 1;
+        g.actor_mut(p).unwrap().nutrition.vitamin = 0.25;
         turns(&mut g, 19);
         assert_eq!(g.actor(p).unwrap().illness_recovery_turns, 19);
         g.advance_turn();
-        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 0);
+        assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 0.0);
         assert_eq!(g.actor(p).unwrap().illness_recovery_turns, 0);
         assert_eq!(g.actor(p).unwrap().illness_turns, 1);
     }
@@ -274,26 +278,47 @@ mod tests {
         let mut g = game();
         let p = g.player_id;
         g.advance_turn();
-        assert_eq!(g.actor(p).unwrap().nutrition.protein, 50);
+        assert_eq!(g.actor(p).unwrap().nutrition.protein, 50.0);
         g.actor_mut(p).unwrap().hp.hp = 40;
         g.pending_action = Some(Action::OpenProperties);
         g.update();
         assert_eq!(g.actor(p).unwrap().hp.hp, 40);
+        g.pending_action = Some(Action::WaitTurn);
+        g.update();
+        assert_eq!(g.actor(p).unwrap().hp.hp, 41);
+        assert_eq!(g.actor(p).unwrap().nutrition.protein, 49.75);
+        g.actor_mut(p).unwrap().nutrition.protein = 0.0;
         g.advance_turn();
         assert_eq!(g.actor(p).unwrap().hp.hp, 41);
-        assert_eq!(g.actor(p).unwrap().nutrition.protein, 49);
-        g.actor_mut(p).unwrap().nutrition.protein = 0;
-        g.advance_turn();
-        assert_eq!(g.actor(p).unwrap().hp.hp, 41);
-        g.actor_mut(p).unwrap().nutrition.protein = 1;
+        g.actor_mut(p).unwrap().nutrition.protein = 0.25;
         g.actor_mut(p).unwrap().hp.hp = 59;
         g.advance_turn();
         g.advance_turn();
         assert_eq!(g.actor(p).unwrap().hp.hp, 60);
-        assert_eq!(g.actor(p).unwrap().nutrition.protein, 0);
+        assert_eq!(g.actor(p).unwrap().nutrition.protein, 0.0);
         g.actor_mut(p).unwrap().hp.hp = 0;
         g.update_nutrition_turn();
         assert_eq!(g.actor(p).unwrap().hp.hp, 0);
+    }
+    #[test]
+    fn a_single_bleeding_wound_offsets_recovery_until_bandaged() {
+        let mut g = game();
+        let player = g.player_id;
+        let actor = g.actor_mut(player).unwrap();
+        actor.hp.hp = 40;
+        actor.nutrition.protein = 0.5;
+        actor.body.insert("left_arm".into(), InjuryStage::Bleeding);
+        g.pending_action = Some(Action::WaitTurn);
+        g.update();
+        let actor = g.actor(player).unwrap();
+        assert_eq!(actor.hp.hp, 40);
+        assert_eq!(actor.nutrition.protein, 0.25);
+
+        let bandage = g.spawn("item.bandage", None, Some(player), 1).unwrap();
+        assert!(g.use_bandage_on(bandage, "left_arm").unwrap());
+        let actor = g.actor(player).unwrap();
+        assert_eq!(actor.hp.hp, 41);
+        assert_eq!(actor.nutrition.protein, 0.0);
     }
     fn set_illness(g: &mut Game, name: &str) {
         let p = g.player_id;
@@ -319,7 +344,7 @@ mod tests {
         let mut g = game();
         let p = g.player_id;
         let mut expected = g.rng.clone();
-        g.actor_mut(p).unwrap().nutrition.vitamin = 0;
+        g.actor_mut(p).unwrap().nutrition.vitamin = 0.0;
         g.disease_rng = Rng::new(roll_seed(6, true));
         turns(&mut g, 99);
         assert_eq!(g.actor(p).unwrap().respiratory_status(), None);
@@ -350,7 +375,7 @@ mod tests {
         turns(&mut g, 200);
         assert_eq!(g.actor(p).unwrap().respiratory_status(), None);
         assert_eq!(g.disease_rng.roll(6), Rng::new(seed).roll(6));
-        g.actor_mut(p).unwrap().nutrition.vitamin = 0;
+        g.actor_mut(p).unwrap().nutrition.vitamin = 0.0;
         g.disease_rng = Rng::new(roll_seed(6, false));
         turns(&mut g, 100);
         assert_eq!(g.actor(p).unwrap().respiratory_status(), None);
@@ -374,20 +399,20 @@ mod tests {
             turns(&mut g, 99);
             assert!(g.actor(p).unwrap().respiratory_status().is_some());
             assert_eq!(g.actor(p).unwrap().hp.hp, 30);
-            assert_eq!(g.actor(p).unwrap().nutrition.protein, 50);
+            assert_eq!(g.actor(p).unwrap().nutrition.protein, 50.0);
             g.advance_turn();
             assert_eq!(g.actor(p).unwrap().respiratory_status(), expected);
         }
         assert_eq!(g.actor(p).unwrap().hp.hp, 31);
-        assert_eq!(g.actor(p).unwrap().nutrition.protein, 49);
+        assert_eq!(g.actor(p).unwrap().nutrition.protein, 49.75);
     }
     #[test]
     fn changing_vitamin_availability_restarts_the_appropriate_interval_and_ui_is_free() {
         let mut g = game();
         let p = g.player_id;
-        g.actor_mut(p).unwrap().nutrition.vitamin = 0;
+        g.actor_mut(p).unwrap().nutrition.vitamin = 0.0;
         turns(&mut g, 99);
-        g.actor_mut(p).unwrap().nutrition.vitamin = 50;
+        g.actor_mut(p).unwrap().nutrition.vitamin = 50.0;
         g.advance_turn();
         assert_eq!(g.actor(p).unwrap().illness_turns, 0);
         set_illness(&mut g, "cold");
@@ -397,11 +422,11 @@ mod tests {
         assert_eq!(g.actor(p).unwrap().illness_recovery_turns, 98);
         g.pending_action = Some(Action::ClosePanel);
         g.update();
-        g.actor_mut(p).unwrap().nutrition.vitamin = 0;
+        g.actor_mut(p).unwrap().nutrition.vitamin = 0.0;
         g.advance_turn();
         assert_eq!(g.actor(p).unwrap().illness_recovery_turns, 0);
         assert_eq!(g.actor(p).unwrap().illness_turns, 1);
-        g.actor_mut(p).unwrap().nutrition.vitamin = 50;
+        g.actor_mut(p).unwrap().nutrition.vitamin = 50.0;
         g.advance_turn();
         assert_eq!(g.actor(p).unwrap().illness_recovery_turns, 1);
         assert_eq!(g.actor(p).unwrap().illness_turns, 0);
@@ -412,7 +437,7 @@ mod tests {
         let p = g.player_id;
         set_illness(&mut g, "pneumonia");
         g.actor_mut(p).unwrap().hp.hp = 10;
-        g.actor_mut(p).unwrap().nutrition.vitamin = 0;
+        g.actor_mut(p).unwrap().nutrition.vitamin = 0.0;
         let origin = g.position(p).unwrap();
         let dest = origin.offset(0, 1);
         turns(&mut g, 20);
@@ -445,7 +470,7 @@ mod tests {
         let p = g.player_id;
         set_illness(&mut g, "pneumonia");
         let a = g.actor_mut(p).unwrap();
-        a.nutrition.vitamin = 0;
+        a.nutrition.vitamin = 0.0;
         a.hp.hp = 10;
         a.body.insert("left_leg".into(), InjuryStage::Severed);
         a.treatment.stopped.insert("left_leg".into());
@@ -472,7 +497,7 @@ mod tests {
             let item = g.spawn("item.syringe", None, Some(p), 1).unwrap();
             assert!(g.use_item(item).unwrap());
             assert_eq!(g.actor(p).unwrap().hp.hp, 45);
-            assert_eq!(g.actor(p).unwrap().nutrition.protein, 50);
+            assert_eq!(g.actor(p).unwrap().nutrition.protein, 50.0);
         }
     }
     #[test]

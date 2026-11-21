@@ -22,6 +22,7 @@ return {
     },
     initial_state = {},
     static = {
+        placement = "map_gen",
         movement_cost = 1.0,
         combat = { base_av = 0 },
         role = "terrain",

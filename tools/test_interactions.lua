@@ -44,7 +44,7 @@ out = chest.hooks.on_interact(instance, {}, { interaction = "open", user = 1 })
 check(out.state.opened)
 check(#effect(out, "spawn") == 0)
 check(effect(out, "open_container")[1].target == instance.id)
-check(#chest.item.contents == 3)
+check(chest.item.loot.min_rolls == 2 and chest.item.loot.max_rolls == 4)
 instance.state = out.state
 out = chest.hooks.on_interact(instance, {}, { interaction = "contents", user = 1 })
 check(effect(out, "open_container")[1].target == instance.id)

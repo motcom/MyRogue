@@ -1,4 +1,4 @@
-//! Terminal-only debug picker, before the graphical game starts.
+//! Terminal map picker, before the graphical game starts.
 use my_rogue::model::config::Result;
 use std::{
     io::{self, Write},
@@ -42,7 +42,7 @@ fn json_maps(root: &Path) -> Result<Vec<String>> {
 
 pub fn select_map(root: &Path) -> Result<Selection> {
     let maps = json_maps(root)?;
-    println!("起動するマップを選択してください（デバッグ）");
+    println!("起動するマップを選択してください");
     println!("  0: Entityテストマップ（既定）");
     for (index, path) in maps.iter().enumerate() {
         println!("  {}: {}", index + 1, path);

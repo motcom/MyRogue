@@ -3,6 +3,7 @@ use crate::{
     model::combat::{self},
     model::config::*,
     model::entity::*,
+    model::map::line_cells,
 };
 use bracket_lib::prelude as bl;
 use serde_json::json;
@@ -92,6 +93,57 @@ impl Game {
             self.messages.pop_front();
         }
     }
+    /// Set exactly one base terrain entity per cell. Does not emit spawn hooks.
+    pub fn set_map_entity(&mut self, definition_id: &str, position: Pos) -> Result<Id> {
+        let definition = self
+            .entity_definitions
+            .get(definition_id)
+            .ok_or("unknown map definition")?;
+        ensure(
+            definition.map.is_some() && definition.category == "map",
+            "base must be map_entity",
+        )?;
+        ensure(self.contains(position), "map base outside map")?;
+        let id = self.next_id;
+        let next = id.checked_add(1).ok_or("entity id overflow")?;
+        let entity = Entity::Map(MapEntity {
+            id,
+            position,
+            collision: definition.common.collision.clone(),
+            script: ScriptBinding {
+                glyph: None,
+                definition_id: definition_id.into(),
+                state: definition.initial_state.clone(),
+            },
+        });
+        for old in self.at(position) {
+            if matches!(self.entities[&old], Entity::Map(_)) {
+                self.map.remove(position, old);
+                self.entities.remove(&old);
+            }
+        }
+        self.next_id = next;
+        self.entities.insert(id, entity);
+        self.map.insert(position, id);
+        Ok(id)
+    }
+    pub(crate) fn place_generated(&mut self, spawn: &Spawn) -> Result<Id> {
+        if self
+            .entity_definitions
+            .get(&spawn.definition_id)
+            .is_some_and(|d| d.category == "map")
+        {
+            ensure(spawn.quantity == 1, "map base cannot stack")?;
+            self.set_map_entity(&spawn.definition_id, spawn.position)
+        } else {
+            self.spawn(
+                &spawn.definition_id,
+                Some(spawn.position),
+                None,
+                spawn.quantity,
+            )
+        }
+    }
     pub fn spawn(
         &mut self,
         definition_id: &str,
@@ -104,6 +156,10 @@ impl Game {
             .get(definition_id)
             .ok_or_else(|| format!("unknown definition: {definition_id}"))?
             .clone();
+        ensure(
+            d.category != "map",
+            "map_entity cannot spawn; use set_map_entity",
+        )?;
         ensure(
             position.is_some() != carrier.is_some(),
             "spawn needs position xor carrier",
@@ -226,7 +282,7 @@ impl Game {
                 let i = d.item.as_ref().unwrap();
                 Entity::Item(ItemEntity {
                     quality: 0,
-                    contents: i.contents.clone(),
+                    contents: self.initial_container_contents(i, id),
                     loaded_ammo: 0,
                     collision: d.common.collision.clone(),
                     script,
@@ -333,13 +389,43 @@ impl Game {
         Ok(())
     }
 
+    pub(crate) fn trace_projectile(
+        &mut self,
+        actor: Id,
+        destination: Pos,
+    ) -> (Vec<Pos>, Option<Id>) {
+        let shooter = self.actor(actor).unwrap();
+        let origin = shooter.position;
+        let chance = combat::interception_chance(shooter.kiyousa);
+        let mut path = Vec::new();
+        for position in line_cells(origin, destination) {
+            path.push(position);
+            if position == destination {
+                break;
+            }
+            for id in self.at(position) {
+                if matches!(&self.entities[&id], Entity::Movable(_))
+                    && self.entities[&id].alive()
+                    && self.rng.roll(100) <= chance
+                {
+                    self.log(format!(
+                        "弾道上の{}に命中しました",
+                        self.definition(id).common.name
+                    ));
+                    return (path, Some(id));
+                }
+            }
+        }
+        (path, None)
+    }
+
     pub fn attack(&mut self, actor: Id, target: Id, explicit: Option<Id>) -> Result<()> {
         let weapon = self.selected_weapon(actor, target, explicit)?;
         let ad = self.definition(actor).movable.as_ref().unwrap();
         let accuracy_attribute = combat::modifier(self.actor(actor).unwrap().subayasa)
             + combat::modifier(self.actor(actor).unwrap().kiyousa);
         let strength = combat::modifier(self.actor(actor).unwrap().kinryoku);
-        let (dice, pv, accuracy, ammo) = if let Some(id) = weapon {
+        let (dice, pv, accuracy, ammo, ranged) = if let Some(id) = weapon {
             let w = self
                 .definition(id)
                 .item
@@ -355,6 +441,7 @@ impl Game {
                 w.ammo_definition_id
                     .as_ref()
                     .map(|k| (k.clone(), w.ammo_per_attack)),
+                w.mode == "ranged",
             )
         } else {
             (
@@ -362,18 +449,30 @@ impl Game {
                 (ad.attack.base_pv as i32 + strength.min(ad.attack.strength_cap as i32)).max(0),
                 accuracy_attribute + ad.combat.accuracy_bonus,
                 None,
+                false,
             )
         };
         let attack_skill = weapon
             .and_then(|id| self.definition(id).item.as_ref()?.weapon.as_ref()?.skill)
             .unwrap_or(crate::game::progression::SkillKind::MeleeWeapon);
+        let (path, intercepted) = if ranged {
+            self.trace_projectile(actor, self.position(target).unwrap())
+        } else {
+            (Vec::new(), None)
+        };
+        let target = intercepted.unwrap_or(target);
         let practice_target = self.actor(target).is_some() && self.entities[&target].alive();
         let skill_bonus = attack_skill.value(&self.actor(actor).unwrap().skill)
             / self.growth_rules.combat_skill_step;
         let accuracy = accuracy + skill_bonus as i32;
         let (av, dv) = self
             .defense_values(target)
-            .map(|(av, dv)| (av, self.actor(target).map(|_| dv)))
+            .map(|(av, dv)| {
+                (
+                    av,
+                    (intercepted.is_none() && self.actor(target).is_some()).then_some(dv),
+                )
+            })
             .ok_or("target has no defense")?;
         let accuracy = accuracy
             - weapon.map_or(0, |id| {
@@ -384,19 +483,8 @@ impl Game {
             outcome.damage = (u64::from(outcome.damage) * 3 / 4) as u32;
         }
         // 発射時の位置・視野を保存し、死亡・移動後も元の弾道を再生する。
-        let projectile = weapon.and_then(|id| self.projectile(actor, target, id, outcome.hit));
-        let melee = weapon.is_none_or(|id| {
-            self.definition(id)
-                .item
-                .as_ref()
-                .unwrap()
-                .weapon
-                .as_ref()
-                .unwrap()
-                .mode
-                == "melee"
-        });
-        let motion = if melee {
+        let projectile = weapon.and_then(|id| self.projectile(actor, id, path, outcome.hit));
+        let motion = if !ranged {
             self.melee_animation(actor, target)
         } else {
             None
@@ -455,7 +543,7 @@ impl Game {
                     .as_ref()
                     .unwrap()
                     .critical_value;
-                let roll = self.rng.roll(6) + self.rng.roll(6);
+                let roll = self.rng.roll(6) + self.rng.roll(6) + self.rng.roll(6);
                 if roll >= threshold {
                     let parts: Vec<_> = self
                         .actor(target)
@@ -551,6 +639,26 @@ impl Game {
         }
         Ok(())
     }
+    pub(super) fn drop_monster_loot(&mut self, id: Id) -> Result<()> {
+        let Some(actor) = self
+            .actor(id)
+            .filter(|actor| matches!(actor.kind, CreatureKind::Monster))
+        else {
+            return Ok(());
+        };
+        let position = actor.position;
+        let tier = self.definition(id).movable.as_ref().unwrap().tier;
+        let entries = &self.monster_drops[&tier];
+        let seed = map_gen::recipe::derive_seed(self.loot_seed ^ 0x4452_4F50, &id.to_string());
+        let mut rng = combat::Rng::new(seed);
+        let entry = &entries[(rng.roll(entries.len() as u32) - 1) as usize];
+        let quantity =
+            entry.min_quantity - 1 + rng.roll(entry.max_quantity - entry.min_quantity + 1);
+        let definition_id = entry.definition_id.clone();
+        self.spawn(&definition_id, Some(position), None, quantity)?;
+        Ok(())
+    }
+
     pub fn remove(&mut self, id: Id) {
         let Some(e) = self.entities.remove(&id) else {
             return;
@@ -803,6 +911,7 @@ impl EntityView<'_> {
         match e {
             Entity::Movable(m) => {
                 v["equipment"] = json!({"right_hand": m.inventory.right_hand, "left_hand": m.inventory.left_hand, "active": self.active_weapon(id, false), "dominant_hand": m.dominant_hand});
+                v["inventory_items"] = json!(m.inventory.items);
                 v["quick_slots"] = json!(m.inventory.quick_slots);
                 v["armor"] = json!(m.inventory.armor);
                 v["bleeding"] = json!(
@@ -872,9 +981,11 @@ impl EntityView<'_> {
                 .filter_map(|id| {
                     let definition = self.definition(id);
                     definition
-                        .r#static
+                        .map
                         .as_ref()
-                        .map(|s| ((definition.common.appearance.layer, id), s.movement_cost))
+                        .map(|m| m.movement_cost)
+                        .or_else(|| definition.r#static.as_ref().map(|s| s.movement_cost))
+                        .map(|cost| ((definition.common.appearance.layer, id), cost))
                 })
                 .max_by_key(|(priority, _)| *priority)
                 .map_or(1.0, |(_, cost)| cost),
@@ -888,35 +999,13 @@ impl EntityView<'_> {
         if !self.contains(a) || !self.contains(b) {
             return false;
         }
-        let (mut x, mut y) = (a.x, a.y);
-        let dx = (b.x - a.x).abs();
-        let dy = -(b.y - a.y).abs();
-        let sx = if a.x < b.x { 1 } else { -1 };
-        let sy = if a.y < b.y { 1 } else { -1 };
-        let mut err = dx + dy;
-        loop {
-            if (x, y) != (a.x, a.y)
-                && (x, y) != (b.x, b.y)
-                && self
-                    .at(Pos { x, y, z: 0 })
+        line_cells(a, b)
+            .take_while(|position| *position != b)
+            .all(|position| {
+                self.at(position)
                     .iter()
-                    .any(|id| self.entities[id].blocks_sight())
-            {
-                return false;
-            }
-            if (x, y) == (b.x, b.y) {
-                return true;
-            }
-            let e = 2 * err;
-            if e >= dy {
-                err += dy;
-                x += sx;
-            }
-            if e <= dx {
-                err += dx;
-                y += sy;
-            }
-        }
+                    .all(|id| !self.entities[id].blocks_sight())
+            })
     }
     pub fn faction(&self, id: Id) -> Option<&str> {
         let actor = self.actor(id)?;
@@ -936,8 +1025,16 @@ impl EntityView<'_> {
                 let Entity::Movable(m) = e else { return None };
                 let q = m.position;
                 let other = self.faction(*target)?;
+                let declared = |actor, other: &str| {
+                    self.definition(actor)
+                        .movable
+                        .as_ref()
+                        .is_some_and(|m| m.hostile_factions.iter().any(|f| f == other))
+                };
                 let hostile = (faction == "survivor" && other == "ghoul")
-                    || (faction == "ghoul" && other == "survivor");
+                    || (faction == "ghoul" && other == "survivor")
+                    || declared(id, other)
+                    || declared(*target, faction);
                 let distance = p.distance(q);
                 (hostile && e.alive() && distance <= range as i32 && self.sight(p, q))
                     .then_some((distance, *target))

@@ -186,6 +186,7 @@ impl Recipe {
                         node.kind,
                         NodeKind::Blend { .. } | NodeKind::TerrainMerge { .. }
                     ) && index == 2 => {}
+                    None if matches!(node.kind, NodeKind::Import(_)) && index == 1 => {}
                     None => return Err(format!("{}: 必須入力が未接続です", node.name)),
                 }
             }

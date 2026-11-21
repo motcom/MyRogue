@@ -1,5 +1,6 @@
 -- tileはワールド上のチャンク座標。同じseedとJSONで隣も再現できる。
 return {
+    populate_map = false,
     width = 32, height = 32, seed = 42,
     ground = "terrain.field", boundary = "obstacle.stone_wall",
     map_generator = {

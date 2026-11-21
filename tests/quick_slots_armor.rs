@@ -140,7 +140,7 @@ fn consumable_shortcut_survives_running_out_and_resupply_and_uses_no_turn_when_e
     let mut g = game();
     let p = g.player_id;
     remove_kind(&mut g, "item.bread");
-    g.actor_mut(p).unwrap().nutrition.carbohydrate = 0;
+    g.actor_mut(p).unwrap().nutrition.carbohydrate = 0.0;
     let bread = item(&mut g, "item.bread", 1);
     g.bind_quick_slot(bread, 5, None).unwrap();
     g.activate_quick_slot(5).unwrap();

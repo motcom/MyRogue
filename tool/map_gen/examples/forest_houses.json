@@ -1,0 +1,440 @@
+{
+  "schema_version": 1,
+  "resolution": 64,
+  "extent": 64.0,
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Field",
+      "kind": {
+        "type": "constant",
+        "value": 1.0
+      },
+      "inputs": [],
+      "position": [
+        260.0,
+        0.0
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Base map entities",
+      "kind": {
+        "type": "terrain",
+        "bands": [
+          {
+            "max": 1.0,
+            "id": "terrain.field",
+            "color": [
+              94,
+              122,
+              80
+            ]
+          }
+        ]
+      },
+      "inputs": [
+        1
+      ],
+      "position": [
+        520.0,
+        0.0
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Import houses",
+      "kind": {
+        "type": "import",
+        "json": "tool/map_gen/examples/house.json",
+        "graph": {
+          "schema_version": 1,
+          "resolution": 16,
+          "extent": 32.0,
+          "nodes": [
+            {
+              "id": 1,
+              "name": "Building",
+              "position": [
+                30,
+                40
+              ],
+              "kind": {
+                "type": "shape",
+                "kind": "square",
+                "scale_x": 1.0,
+                "scale_y": 1.0,
+                "rotation": 0.0,
+                "softness": 0.0
+              },
+              "inputs": []
+            },
+            {
+              "id": 2,
+              "name": "Partition rooms",
+              "position": [
+                290,
+                40
+              ],
+              "kind": {
+                "type": "map",
+                "operation": "partition",
+                "min_size": 5,
+                "depth": 1,
+                "wall_width": 1,
+                "seed": 42,
+                "cutoff": 0.5
+              },
+              "inputs": [
+                1
+              ]
+            },
+            {
+              "id": 3,
+              "name": "Corridors ONLY",
+              "position": [
+                550,
+                40
+              ],
+              "kind": {
+                "type": "connect_regions",
+                "cutoff": 0.5,
+                "width": 1,
+                "distortion": 0.0,
+                "frequency": 1.5,
+                "seed": 42,
+                "include_source": false
+              },
+              "inputs": [
+                2
+              ]
+            },
+            {
+              "id": 4,
+              "name": "Door mask",
+              "position": [
+                810,
+                380
+              ],
+              "kind": {
+                "type": "map",
+                "operation": "entrances",
+                "rectangle": true,
+                "depth": 1,
+                "offset": 0.5,
+                "merge": true,
+                "width": 1,
+                "spacing": 0.0,
+                "cutoff": 0.5
+              },
+              "inputs": [
+                2,
+                3
+              ]
+            },
+            {
+              "id": 5,
+              "name": "Open floor",
+              "position": [
+                810,
+                40
+              ],
+              "kind": {
+                "type": "blend",
+                "mode": "max",
+                "opacity": 1.0
+              },
+              "inputs": [
+                2,
+                3,
+                null
+              ]
+            },
+            {
+              "id": 6,
+              "name": "Floor value",
+              "position": [
+                810,
+                730
+              ],
+              "kind": {
+                "type": "constant",
+                "value": 0.5
+              },
+              "inputs": []
+            },
+            {
+              "id": 7,
+              "name": "Floor = 0.5",
+              "position": [
+                1070,
+                40
+              ],
+              "kind": {
+                "type": "blend",
+                "mode": "multiply",
+                "opacity": 1.0
+              },
+              "inputs": [
+                5,
+                6,
+                null
+              ]
+            },
+            {
+              "id": 8,
+              "name": "Doors = 1",
+              "position": [
+                1330,
+                40
+              ],
+              "kind": {
+                "type": "blend",
+                "mode": "max",
+                "opacity": 1.0
+              },
+              "inputs": [
+                7,
+                4,
+                null
+              ]
+            },
+            {
+              "id": 9,
+              "name": "Terrain IDs",
+              "position": [
+                1590,
+                40
+              ],
+              "kind": {
+                "type": "terrain",
+                "bands": [
+                  {
+                    "max": 0.25,
+                    "id": "obstacle.wooden_wall",
+                    "color": [
+                      75,
+                      74,
+                      69
+                    ]
+                  },
+                  {
+                    "max": 0.75,
+                    "id": "terrain.road",
+                    "color": [
+                      171,
+                      152,
+                      106
+                    ]
+                  },
+                  {
+                    "max": 1.0,
+                    "id": "obstacle.wooden_door",
+                    "color": [
+                      186,
+                      100,
+                      53
+                    ]
+                  }
+                ]
+              },
+              "inputs": [
+                8
+              ]
+            },
+            {
+              "id": 10,
+              "name": "Output",
+              "position": [
+                1850,
+                40
+              ],
+              "kind": {
+                "type": "output"
+              },
+              "inputs": [
+                17
+              ]
+            },
+            {
+              "id": 11,
+              "name": "Safe room interiors",
+              "kind": {
+                "type": "map",
+                "operation": "morphology",
+                "mode": "erode",
+                "radius": 2,
+                "cutoff": 0.5
+              },
+              "inputs": [
+                5
+              ],
+              "position": [
+                260.0,
+                680.0
+              ]
+            },
+            {
+              "id": 12,
+              "name": "Tables",
+              "kind": {
+                "type": "map",
+                "operation": "scatter",
+                "count": 2,
+                "min_distance": 4.0,
+                "radius": 0,
+                "seed": 81,
+                "cutoff": 0.5
+              },
+              "inputs": [
+                11
+              ],
+              "position": [
+                520.0,
+                680.0
+              ]
+            },
+            {
+              "id": 13,
+              "name": "Table IDs",
+              "kind": {
+                "type": "terrain",
+                "bands": [
+                  {
+                    "max": 1.0,
+                    "id": "obstacle.table",
+                    "color": [
+                      150,
+                      112,
+                      75
+                    ]
+                  }
+                ]
+              },
+              "inputs": [
+                12
+              ],
+              "position": [
+                780.0,
+                680.0
+              ]
+            },
+            {
+              "id": 14,
+              "name": "Place tables",
+              "kind": {
+                "type": "terrain_merge",
+                "cutoff": 0.5
+              },
+              "inputs": [
+                9,
+                13,
+                12
+              ],
+              "position": [
+                1040.0,
+                680.0
+              ]
+            },
+            {
+              "id": 15,
+              "name": "Chairs",
+              "kind": {
+                "type": "map",
+                "operation": "scatter",
+                "count": 3,
+                "min_distance": 3.0,
+                "radius": 0,
+                "seed": 17,
+                "cutoff": 0.5
+              },
+              "inputs": [
+                11
+              ],
+              "position": [
+                0.0,
+                1020.0
+              ]
+            },
+            {
+              "id": 16,
+              "name": "Chair IDs",
+              "kind": {
+                "type": "terrain",
+                "bands": [
+                  {
+                    "max": 1.0,
+                    "id": "obstacle.chair",
+                    "color": [
+                      185,
+                      140,
+                      90
+                    ]
+                  }
+                ]
+              },
+              "inputs": [
+                15
+              ],
+              "position": [
+                260.0,
+                1020.0
+              ]
+            },
+            {
+              "id": 17,
+              "name": "Place chairs",
+              "kind": {
+                "type": "terrain_merge",
+                "cutoff": 0.5
+              },
+              "inputs": [
+                14,
+                16,
+                15
+              ],
+              "position": [
+                520.0,
+                1020.0
+              ]
+            }
+          ],
+          "output": 10
+        },
+        "seed": 42,
+        "count": 3,
+        "width": 16,
+        "height": 16,
+        "region": [
+          0.1,
+          0.1,
+          0.8,
+          0.8
+        ]
+      },
+      "inputs": [
+        2,
+        null
+      ],
+      "position": [
+        780.0,
+        0.0
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Output",
+      "kind": {
+        "type": "output"
+      },
+      "inputs": [
+        3
+      ],
+      "position": [
+        1040.0,
+        0.0
+      ]
+    }
+  ],
+  "output": 4
+}

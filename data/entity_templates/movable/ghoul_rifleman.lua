@@ -22,6 +22,7 @@ return {
     },
     initial_state = {},
     movable = {
+        tier = 4,
         experience_reward = 120,
         dominant_hand = "right",
         sanity = 100,

@@ -13,6 +13,7 @@ return {
     },
     initial_state = {},
     item = {
+        tier = 2,
         length_mm = 800, volume_ml = 3000, mass_g = 2500,
         stack_limit = 1, materials = { "leather" }, tool_functions = {}, resources = {},
         armor = { slot = "body", av = 2, dv = 0 },

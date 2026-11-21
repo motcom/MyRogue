@@ -13,6 +13,7 @@ return {
     },
     initial_state = { opened = false },
     item = {
+        tier = 2,
         length_mm = 600, volume_ml = 5000, mass_g = 3000, stack_limit = 1,
         contents = {
             { definition_id = "item.wood", quantity = 80 },

@@ -34,25 +34,34 @@ fn quantity(g: &Game, id: Id) -> u32 {
     }
 }
 #[test]
-fn bandage_consumes_one_then_stops_bleeding_and_disappears_at_one_hundred_turns() {
+fn bandage_stops_bleeding_immediately_and_disappears_at_one_hundred_turns() {
     let mut g = game();
     let p = g.player_id;
+    let protein = g.actor(p).unwrap().nutrition.protein;
     let b = dress(&mut g, "left_arm", InjuryStage::Bleeding);
     assert_eq!(quantity(&g, b), 2);
     assert_eq!(g.actor(p).unwrap().treatment.bandages["left_arm"], 100);
     assert_eq!(g.turn, 1);
     assert_eq!(g.actor(p).unwrap().hp.hp, 5000);
+    assert_eq!(g.actor(p).unwrap().part_bleeding("left_arm"), 0);
     assert!(g.bandage_choices(p).is_empty());
     assert!(g.use_bandage_on(b, "left_arm").is_err());
     for _ in 1..99 {
         g.advance_turn();
     }
     assert_eq!(g.turn, 99);
-    assert_eq!(g.actor(p).unwrap().part_bleeding("left_arm"), 1);
+    assert_eq!(g.actor(p).unwrap().part_bleeding("left_arm"), 0);
+    assert!(
+        g.actor(p)
+            .unwrap()
+            .treatment
+            .bandages
+            .contains_key("left_arm")
+    );
     g.advance_turn();
     assert_eq!(g.turn, 100);
-    assert_eq!(g.actor(p).unwrap().hp.hp, 4950);
-    assert_eq!(g.actor(p).unwrap().nutrition.protein, 0);
+    assert_eq!(g.actor(p).unwrap().hp.hp, 5000);
+    assert_eq!(g.actor(p).unwrap().nutrition.protein, protein);
     assert_eq!(g.actor(p).unwrap().part_bleeding("left_arm"), 0);
     assert!(g.actor(p).unwrap().treatment.bandages.is_empty());
     assert_eq!(g.actor(p).unwrap().body["left_arm"], InjuryStage::Bleeding);
@@ -60,8 +69,23 @@ fn bandage_consumes_one_then_stops_bleeding_and_disappears_at_one_hundred_turns(
     assert_eq!(snapshot["bleeding"]["left_arm"], 0);
     assert!(snapshot["bandages"].as_object().unwrap().is_empty());
     g.advance_turn();
-    assert_eq!(g.actor(p).unwrap().hp.hp, 4950);
+    assert_eq!(g.actor(p).unwrap().hp.hp, 5000);
     assert_eq!(quantity(&g, b), 2);
+}
+#[test]
+fn bandage_leaves_other_wounds_bleeding() {
+    let mut g = game();
+    let p = g.player_id;
+    let actor = g.actor_mut(p).unwrap();
+    actor.nutrition.protein = 0.0;
+    actor
+        .body
+        .insert("right_arm".into(), InjuryStage::HeavyBleeding);
+    dress(&mut g, "left_arm", InjuryStage::Bleeding);
+    let actor = g.actor(p).unwrap();
+    assert_eq!(actor.part_bleeding("left_arm"), 0);
+    assert_eq!(actor.part_bleeding("right_arm"), 2);
+    assert_eq!(actor.hp.hp, 4998);
 }
 #[test]
 fn stopping_amputation_bleeding_preserves_missing_leg_and_movement_penalty() {
@@ -102,7 +126,7 @@ fn attack_arm(g: &mut Game) -> (Id, Id, u64) {
         .weapon
         .as_mut()
         .unwrap()
-        .critical_value = 2;
+        .critical_value = 3;
     g.equip_auto(enemy, weapon).unwrap();
     let before = g.actor(p).unwrap().body["left_arm"];
     let seed = (0..500)
@@ -127,7 +151,7 @@ fn criticals_advance_bandaged_wounds_and_keep_the_existing_completion_time() {
         assert_eq!(g.actor(p).unwrap().body["left_arm"], expected);
         assert_eq!(g.actor(p).unwrap().treatment.bandages["left_arm"], 100);
     }
-    assert_eq!(g.actor(p).unwrap().part_bleeding("left_arm"), 4);
+    assert_eq!(g.actor(p).unwrap().part_bleeding("left_arm"), 0);
     assert!(!g.actor(p).unwrap().hand_usable(Hand::Left));
     g.remove(enemy);
     for _ in 1..100 {

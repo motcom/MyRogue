@@ -6,13 +6,14 @@ return {
     common = {
         name = "木の扉",
         description = "木でできた扉。eで方向を選び、行動メニューから開閉できる。開くと通行と視線が通る。",
-        appearance = { glyph = "+", fg = {180, 130, 70}, bg = {0, 0, 0}, layer = 12 },
+        appearance = { glyph = "+", fg = { 185, 99, 64 }, bg = {0, 0, 0}, layer = 12 },
         collision = { movement = true, sight = true },
         durability = { max = 60 },
         tags = { "door" },
     },
     initial_state = { opened = false },
     static = {
+        placement = "map_gen",
         movement_cost = 1.0,
         role = "obstacle", combat = { base_av = 1 }, facilities = {}, resources = {},
     },

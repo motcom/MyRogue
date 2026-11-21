@@ -8,6 +8,7 @@ impl Game {
         let Some(a) = self.actor(self.player_id) else {
             return vec![];
         };
+        let [protein, carbohydrate, vitamin] = super::displayed_nutrition(&a.nutrition);
         let mut lines = vec![
             format!("{:<8} {}", "名前", self.definition(a.id).common.name),
             self.level_progress_label(),
@@ -27,7 +28,7 @@ impl Game {
             ),
             format!(
                 "{:<8} タンパク質 {:>3}/100    炭水化物 {:>3}/100    ビタミン {:>3}/100",
-                "栄養", a.nutrition.protein, a.nutrition.carbohydrate, a.nutrition.vitamin
+                "栄養", protein, carbohydrate, vitamin
             ),
             format!(
                 "{:<8} {} マス",
@@ -52,7 +53,7 @@ impl Game {
             if a.respiratory_status().is_some() {
                 "病気で停止"
             } else if a.can_regenerate() {
-                "HP1/ターン（タンパク質1消費）"
+                "HP1/ターン（タンパク質を消費）"
             } else {
                 "タンパク質不足で停止"
             },

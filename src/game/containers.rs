@@ -8,6 +8,59 @@ use crate::{
 use bracket_lib::prelude as bl;
 
 impl Game {
+    pub(crate) fn initial_container_contents(
+        &self,
+        item: &ItemDefinition,
+        id: Id,
+    ) -> Vec<ContainerEntry> {
+        let Some(loot) = &item.loot else {
+            return item.contents.clone();
+        };
+        let seed = map_gen::recipe::derive_seed(self.loot_seed, &id.to_string());
+        let mut rng = crate::model::combat::Rng::new(seed);
+        let mut pools = vec![Vec::new(); loot.tier_weights.len()];
+        for entry in &loot.entries {
+            let tier = self.entity_definitions[&entry.definition_id]
+                .item
+                .as_ref()
+                .unwrap()
+                .tier;
+            pools[(tier - 1) as usize].push(entry);
+        }
+        let count = loot.min_rolls - 1 + rng.roll(loot.max_rolls - loot.min_rolls + 1);
+        let mut contents = Vec::with_capacity(count as usize);
+        for _ in 0..count {
+            let total = pools
+                .iter()
+                .zip(&loot.tier_weights)
+                .filter(|(pool, _)| !pool.is_empty())
+                .map(|(_, weight)| *weight)
+                .sum();
+            let mut roll = rng.roll(total);
+            let (pool, _) = pools
+                .iter_mut()
+                .zip(&loot.tier_weights)
+                .filter(|(pool, _)| !pool.is_empty())
+                .find(|(_, weight)| {
+                    if roll <= **weight {
+                        true
+                    } else {
+                        roll -= **weight;
+                        false
+                    }
+                })
+                .expect("validated loot has enough weighted entries");
+            let entry = pool.swap_remove((rng.roll(pool.len() as u32) - 1) as usize);
+            let quantity =
+                entry.min_quantity - 1 + rng.roll(entry.max_quantity - entry.min_quantity + 1);
+            contents.push(ContainerEntry {
+                definition_id: entry.definition_id.clone(),
+                quantity,
+            });
+        }
+        contents
+    }
+
     pub(crate) fn open_container(&mut self, item: Id) -> Result<()> {
         ensure(
             self.can_reach_interaction(item),
@@ -188,17 +241,19 @@ impl Game {
             .take(20)
             .enumerate()
         {
-            let name = &self.entity_definitions[&entry.definition_id].common.name;
+            let definition = &self.entity_definitions[&entry.definition_id];
+            let tier = definition.item.as_ref().unwrap().tier;
             let label = format!(
-                "{} [{}] {} x{}",
+                "{} [{}] {} x{}  Tier {}",
                 if cursor == self.selection { ">" } else { " " },
                 if self.container_selection.contains(index) {
                     "x"
                 } else {
                     " "
                 },
-                name.chars().take(48).collect::<String>(),
-                entry.quantity
+                definition.common.name.chars().take(48).collect::<String>(),
+                entry.quantity,
+                tier,
             );
             ctx.print_ja_color_bg(
                 5,
@@ -223,6 +278,20 @@ impl Game {
 }
 
 #[cfg(test)]
+pub(super) fn set_test_chest_contents(game: &mut Game, chest: Id) {
+    let Some(Entity::Item(item)) = game.entities.get_mut(&chest) else {
+        panic!("expected a chest");
+    };
+    item.contents = [("item.bread", 2), ("item.bandage", 2), ("ammo.pistol", 10)]
+        .into_iter()
+        .map(|(definition_id, quantity)| ContainerEntry {
+            definition_id: definition_id.into(),
+            quantity,
+        })
+        .collect();
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     fn setup() -> (Game, Id) {
@@ -240,8 +309,57 @@ mod tests {
         let chest = game
             .spawn("item.treasure_chest", Some(origin.offset(1, 0)), None, 1)
             .unwrap();
+        set_test_chest_contents(&mut game, chest);
         game.interact(chest, "open").unwrap();
         (game, chest)
+    }
+    #[test]
+    fn generated_chests_roll_distinct_items_with_tier_weights_and_configured_quantities() {
+        let mut game = Game::load(std::path::Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+        let position = game.position(game.player_id).unwrap();
+        let mut same = game.clone();
+        let mut combat_rng = game.rng.clone();
+        let chest = game
+            .spawn("item.treasure_chest", Some(position), None, 1)
+            .unwrap();
+        assert_eq!(
+            chest,
+            same.spawn("item.treasure_chest", Some(position), None, 1)
+                .unwrap()
+        );
+        assert_eq!(
+            game.entity_snapshot(chest).unwrap()["contents"],
+            same.entity_snapshot(chest).unwrap()["contents"]
+        );
+        assert_eq!(game.rng.roll(1000), combat_rng.roll(1000));
+
+        let item = game.definition(chest).item.as_ref().unwrap();
+        let loot = item.loot.as_ref().unwrap();
+        let mut first_draws = [0; 4];
+        let mut sizes = std::collections::BTreeSet::new();
+        for id in 1..=4096 {
+            let contents = game.initial_container_contents(item, id);
+            sizes.insert(contents.len());
+            let mut ids = std::collections::BTreeSet::new();
+            for entry in &contents {
+                assert!(ids.insert(&entry.definition_id));
+                let rule = loot
+                    .entries
+                    .iter()
+                    .find(|rule| rule.definition_id == entry.definition_id)
+                    .unwrap();
+                assert!((rule.min_quantity..=rule.max_quantity).contains(&entry.quantity));
+            }
+            let tier = game.entity_definitions[&contents[0].definition_id]
+                .item
+                .as_ref()
+                .unwrap()
+                .tier;
+            first_draws[(tier - 1) as usize] += 1;
+        }
+        assert_eq!(sizes, [2, 3, 4].into_iter().collect());
+        assert!(first_draws.windows(2).all(|tiers| tiers[0] > tiers[1]));
+        assert!((20..=70).contains(&first_draws[3]), "{first_draws:?}");
     }
     #[test]
     fn selection_toggle_cancel_and_capacity_failure_preserve_contents_and_time() {

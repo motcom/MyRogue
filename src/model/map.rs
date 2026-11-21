@@ -3,6 +3,31 @@ use crate::{
     model::entity::{Entity, EntityId},
 };
 use std::collections::BTreeMap;
+
+/// Cells crossed by a line on the map, excluding the origin and including the destination.
+pub(crate) fn line_cells(mut position: Pos, end: Pos) -> impl Iterator<Item = Pos> {
+    let dx = (end.x - position.x).abs();
+    let dy = -(end.y - position.y).abs();
+    let sx = (end.x - position.x).signum();
+    let sy = (end.y - position.y).signum();
+    let mut error = dx + dy;
+    std::iter::from_fn(move || {
+        if position.x == end.x && position.y == end.y {
+            return None;
+        }
+        let doubled = 2 * error;
+        if doubled >= dy {
+            error += dy;
+            position.x += sx;
+        }
+        if doubled <= dx {
+            error += dx;
+            position.y += sy;
+        }
+        Some(position)
+    })
+}
+
 #[derive(Clone, Default)]
 pub struct Cell {
     pub entity_ids: Vec<EntityId>,

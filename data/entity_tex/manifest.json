@@ -78,8 +78,8 @@
     {
       "id": "terrain.field",
       "name": "野原",
-      "category": "static",
-      "definition": "data/entity_templates/static.lua",
+      "category": "map",
+      "definition": "data/entity_templates/map/field.lua",
       "file": "static/terrain.field.png",
       "atlas_cell": [
         4,
@@ -93,16 +93,16 @@
       ],
       "source_override": "source/simple_terrain/terrain.field-v2.png",
       "palette_ids": [
-        "forest",
-        "moss",
-        "olive"
+        "dry_grass",
+        "bile",
+        "spore"
       ]
     },
     {
       "id": "terrain.road",
       "name": "道",
-      "category": "static",
-      "definition": "data/entity_templates/static/road.lua",
+      "category": "map",
+      "definition": "data/entity_templates/map/road.lua",
       "file": "static/terrain.road.png",
       "atlas_cell": [
         5,
@@ -116,9 +116,9 @@
       ],
       "source_override": "source/simple_terrain/terrain.road-v2.png",
       "palette_ids": [
-        "peat",
-        "bark",
-        "timber"
+        "bone",
+        "warning",
+        "linen"
       ]
     },
     {
@@ -139,9 +139,9 @@
       ],
       "source_override": "source/simple_terrain/obstacle.stone_wall-v2.png",
       "palette_ids": [
-        "charcoal",
         "steel",
-        "ash"
+        "ash",
+        "charcoal"
       ]
     },
     {
@@ -181,8 +181,8 @@
     {
       "id": "terrain.pond",
       "name": "池",
-      "category": "static",
-      "definition": "data/entity_templates/static/pond.lua",
+      "category": "map",
+      "definition": "data/entity_templates/map/pond.lua",
       "file": "static/terrain.pond.png",
       "atlas_cell": [
         1,
@@ -196,9 +196,9 @@
       ],
       "source_override": "source/simple_terrain/terrain.pond-v2.png",
       "palette_ids": [
-        "deep_water",
-        "slate_blue",
-        "verdigris"
+        "ice",
+        "fog",
+        "flash"
       ]
     },
     {
@@ -816,8 +816,8 @@
     {
       "id": "terrain.wasteland",
       "name": "荒地",
-      "category": "static",
-      "definition": "data/entity_templates/static/wasteland.lua",
+      "category": "map",
+      "definition": "data/entity_templates/map/wasteland.lua",
       "file": "static/terrain.wasteland.png",
       "atlas_cell": [
         6,
@@ -831,9 +831,9 @@
       ],
       "source_override": "source/simple_terrain/terrain.wasteland-v2.png",
       "palette_ids": [
-        "soot",
-        "peat",
-        "bark"
+        "fog",
+        "bone",
+        "linen"
       ]
     },
     {
@@ -888,9 +888,9 @@
       ],
       "source_override": "source/simple_terrain/obstacle.wooden_wall-v2.png",
       "palette_ids": [
-        "peat",
         "bark",
-        "timber"
+        "timber",
+        "clay"
       ]
     },
     {
@@ -1323,6 +1323,96 @@
       "transparent_pixels": 664,
       "source_override": "source/crafting/crafting_storage.png",
       "dedicated_texture": true
+    },
+    {
+      "id": "monster.goblin_scavenger",
+      "name": "ゴブリンの漁り屋",
+      "category": "movable",
+      "definition": "data/entity_templates/movable/goblin_scavenger.lua",
+      "file": "movable/monster.goblin_scavenger.png",
+      "atlas_cell": [
+        5,
+        9
+      ],
+      "opaque_pixels": 557,
+      "transparent_pixels": 467,
+      "source_override": "source/goblins/scavenger.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "monster.goblin_scrap_guard",
+      "name": "ゴブリンの鉄くず兵",
+      "category": "movable",
+      "definition": "data/entity_templates/movable/goblin_scrap_guard.lua",
+      "file": "movable/monster.goblin_scrap_guard.png",
+      "atlas_cell": [
+        6,
+        9
+      ],
+      "opaque_pixels": 529,
+      "transparent_pixels": 495,
+      "source_override": "source/goblins/scrap_guard.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "monster.goblin_spearman",
+      "name": "ゴブリンの槍持ち",
+      "category": "movable",
+      "definition": "data/entity_templates/movable/goblin_spearman.lua",
+      "file": "movable/monster.goblin_spearman.png",
+      "atlas_cell": [
+        7,
+        9
+      ],
+      "opaque_pixels": 304,
+      "transparent_pixels": 720,
+      "source_override": "source/goblins/spearman.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "monster.goblin_crossbowman",
+      "name": "ゴブリンの弩撃ち",
+      "category": "movable",
+      "definition": "data/entity_templates/movable/goblin_crossbowman.lua",
+      "file": "movable/monster.goblin_crossbowman.png",
+      "atlas_cell": [
+        0,
+        10
+      ],
+      "opaque_pixels": 482,
+      "transparent_pixels": 542,
+      "source_override": "source/goblins/crossbowman.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "monster.goblin_caller",
+      "name": "ゴブリンの呼び子",
+      "category": "movable",
+      "definition": "data/entity_templates/movable/goblin_caller.lua",
+      "file": "movable/monster.goblin_caller.png",
+      "atlas_cell": [
+        1,
+        10
+      ],
+      "opaque_pixels": 531,
+      "transparent_pixels": 493,
+      "source_override": "source/goblins/caller.png",
+      "dedicated_texture": true
+    },
+    {
+      "id": "monster.goblin_chief",
+      "name": "ゴブリンの頭目",
+      "category": "movable",
+      "definition": "data/entity_templates/movable/goblin_chief.lua",
+      "file": "movable/monster.goblin_chief.png",
+      "atlas_cell": [
+        2,
+        10
+      ],
+      "opaque_pixels": 559,
+      "transparent_pixels": 465,
+      "source_override": "source/goblins/chief.png",
+      "dedicated_texture": true
     }
   ],
   "effects": [
@@ -1645,6 +1735,86 @@
       "frame": 3,
       "opaque_pixels": 7,
       "transparent_pixels": 1017
+    },
+    {
+      "id": "shot.bolt.0",
+      "name": "クロスボウボルト・8方向 1/8",
+      "file": "effects/shot.bolt.0.png",
+      "source_override": "source/effects/bolt-sheet.png",
+      "animation": "shot.bolt",
+      "frame": 0,
+      "opaque_pixels": 112,
+      "transparent_pixels": 912
+    },
+    {
+      "id": "shot.bolt.1",
+      "name": "クロスボウボルト・8方向 2/8",
+      "file": "effects/shot.bolt.1.png",
+      "source_override": "source/effects/bolt-sheet.png",
+      "animation": "shot.bolt",
+      "frame": 1,
+      "opaque_pixels": 112,
+      "transparent_pixels": 912
+    },
+    {
+      "id": "shot.bolt.2",
+      "name": "クロスボウボルト・8方向 3/8",
+      "file": "effects/shot.bolt.2.png",
+      "source_override": "source/effects/bolt-sheet.png",
+      "animation": "shot.bolt",
+      "frame": 2,
+      "opaque_pixels": 112,
+      "transparent_pixels": 912
+    },
+    {
+      "id": "shot.bolt.3",
+      "name": "クロスボウボルト・8方向 4/8",
+      "file": "effects/shot.bolt.3.png",
+      "source_override": "source/effects/bolt-sheet.png",
+      "animation": "shot.bolt",
+      "frame": 3,
+      "opaque_pixels": 112,
+      "transparent_pixels": 912
+    },
+    {
+      "id": "shot.bolt.4",
+      "name": "クロスボウボルト・8方向 5/8",
+      "file": "effects/shot.bolt.4.png",
+      "source_override": "source/effects/bolt-sheet.png",
+      "animation": "shot.bolt",
+      "frame": 4,
+      "opaque_pixels": 108,
+      "transparent_pixels": 916
+    },
+    {
+      "id": "shot.bolt.5",
+      "name": "クロスボウボルト・8方向 6/8",
+      "file": "effects/shot.bolt.5.png",
+      "source_override": "source/effects/bolt-sheet.png",
+      "animation": "shot.bolt",
+      "frame": 5,
+      "opaque_pixels": 108,
+      "transparent_pixels": 916
+    },
+    {
+      "id": "shot.bolt.6",
+      "name": "クロスボウボルト・8方向 7/8",
+      "file": "effects/shot.bolt.6.png",
+      "source_override": "source/effects/bolt-sheet.png",
+      "animation": "shot.bolt",
+      "frame": 6,
+      "opaque_pixels": 108,
+      "transparent_pixels": 916
+    },
+    {
+      "id": "shot.bolt.7",
+      "name": "クロスボウボルト・8方向 8/8",
+      "file": "effects/shot.bolt.7.png",
+      "source_override": "source/effects/bolt-sheet.png",
+      "animation": "shot.bolt",
+      "frame": 7,
+      "opaque_pixels": 108,
+      "transparent_pixels": 916
     }
   ]
 }

@@ -81,6 +81,7 @@ return {
             r = { type = "reload" },
             g = { type = "pickup" },
             e = { type = "interact" },
+            s = { type = "smash" },
             o = { type = "open" },
             h = {
                 type = "move",

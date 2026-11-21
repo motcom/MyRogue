@@ -10,6 +10,7 @@ return {
     },
     initial_state = {},
     item = {
+        tier = 3,
         length_mm = 300, volume_ml = 300, mass_g = 500, stack_limit = 1,
         materials = { "metal", "wood" }, tool_functions = { "hammering" },
         tool_levels = { hammering = 2 }, resources = {},

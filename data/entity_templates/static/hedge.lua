@@ -9,7 +9,7 @@ return {
         description = "固定マップ要素。通行と視線は個別に設定する。",
         appearance = {
             glyph = "%",
-            fg = { 40, 130, 40 },
+            fg = { 100, 112, 75 },
             bg = { 0, 0, 0 },
             layer = 10,
         },
@@ -24,6 +24,7 @@ return {
     },
     initial_state = {},
     static = {
+        placement = "map_gen",
         movement_cost = 1.0,
         combat = { base_av = 2 },
         role = "obstacle",

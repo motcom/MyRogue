@@ -25,6 +25,7 @@ return {
     },
     initial_state = {},
     item = {
+        tier = 3,
         length_mm = 1100,
         volume_ml = 150,
         mass_g = 3000,
@@ -35,7 +36,7 @@ return {
         weapon = {
             skill = "melee_weapon",
             hands = "two",
-            critical_value = 9,
+            critical_value = 14,
             base_pv = 8, strength_cap = 2, accuracy_bonus = 0,
             mode = "melee",
             damage = { dice = 1, sides = 10, bonus = 0 },

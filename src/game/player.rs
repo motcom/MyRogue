@@ -178,14 +178,14 @@ mod tests {
             g.advance_turn();
         }
         assert_eq!(g.actor(p).unwrap().stamina, 100);
-        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 49);
+        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 49.75);
         g.advance_turn();
-        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 49);
+        assert_eq!(g.actor(p).unwrap().nutrition.carbohydrate, 49.75);
         g.actor_mut(p).unwrap().stamina = 90;
-        g.actor_mut(p).unwrap().nutrition.carbohydrate = 0;
+        g.actor_mut(p).unwrap().nutrition.carbohydrate = 0.0;
         g.advance_turn();
         assert_eq!(g.actor(p).unwrap().stamina, 90);
-        g.actor_mut(p).unwrap().nutrition.carbohydrate = 50;
+        g.actor_mut(p).unwrap().nutrition.carbohydrate = 50.0;
         g.toggle_running().unwrap();
         g.advance_turn();
         assert_eq!(g.actor(p).unwrap().stamina, 90);

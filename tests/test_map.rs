@@ -83,7 +83,7 @@ fn contains_every_definition_and_never_stacks_blocking_entities() {
             .values()
             .filter(|e| matches!(e, Entity::Movable(_)))
             .count(),
-        12
+        18
     );
     for y in 0..g.map.height {
         for x in 0..g.map.width {
@@ -162,7 +162,8 @@ fn closed_rooms_keep_player_safe_and_enemies_contained_for_preparation() {
             continue;
         }
         // Scavenger may walk to its supplies, but stays inside its own room.
-        let x0 = 30 + ((origin.x - 30) / 7) * 7;
+        let base_x = if origin.x >= 60 { 60 } else { 30 };
+        let x0 = base_x + ((origin.x - base_x) / 7) * 7;
         let y0 = 2 + ((origin.y - 2) / 10) * 10;
         assert!(q.x > x0 && q.x < x0 + 6 && q.y > y0 && q.y < y0 + 6);
         assert!(!g.sight(q, g.position(p).unwrap()));

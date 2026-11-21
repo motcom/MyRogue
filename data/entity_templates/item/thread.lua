@@ -10,6 +10,7 @@ return {
     },
     initial_state = {},
     item = {
+        tier = 1,
         length_mm = 150, volume_ml = 100, mass_g = 100, stack_limit = 100,
         materials = { "cloth" }, tool_functions = {  },
         tool_levels = {  }, resources = {},

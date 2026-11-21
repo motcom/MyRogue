@@ -80,25 +80,26 @@ impl Animation {
                     frame.min(3),
                 ));
             }
-            if self.style == Style::Bullet {
-                let end = *self.path.last()?;
-                let direction = match (
-                    (end.x - self.origin.x).signum(),
-                    (end.y - self.origin.y).signum(),
-                ) {
-                    (1, 0) => 0,
-                    (0, 1) => 1,
-                    (-1, 0) => 2,
-                    (0, -1) => 3,
-                    (1, 1) => 4,
-                    (-1, 1) => 5,
-                    (-1, -1) => 6,
-                    (1, -1) => 7,
-                    _ => 0,
-                };
-                return Some(("shot.bullet", direction));
-            }
-            return None;
+            let end = *self.path.last()?;
+            let direction = match (
+                (end.x - self.origin.x).signum(),
+                (end.y - self.origin.y).signum(),
+            ) {
+                (1, 0) => 0,
+                (0, 1) => 1,
+                (-1, 0) => 2,
+                (0, -1) => 3,
+                (1, 1) => 4,
+                (-1, 1) => 5,
+                (-1, -1) => 6,
+                (1, -1) => 7,
+                _ => 0,
+            };
+            let animation = match self.style {
+                Style::Bullet => "shot.bullet",
+                Style::Bolt => "shot.bolt",
+            };
+            return Some((animation, direction));
         }
         let blast = self.blast.as_ref()?;
         let age = self.elapsed_ms - self.travel_ms();
@@ -205,7 +206,7 @@ impl Animation {
                 Style::Bullet => bl::YELLOW,
                 Style::Bolt => bl::CYAN,
             });
-            // 銃は短い光の尾、矢は一マスの矢印を進める。
+            // 銃は短い光の尾を引き、矢は一マスずつ進む。
             let tail = if self.style == Style::Bullet {
                 head.saturating_sub(2)
             } else {
@@ -261,29 +262,16 @@ impl Game {
     pub(crate) fn projectile(
         &self,
         actor: Id,
-        target: Id,
         weapon: Id,
+        path: Vec<Pos>,
         hit: bool,
     ) -> Option<Animation> {
         let w = self.definition(weapon).item.as_ref()?.weapon.as_ref()?;
         if w.mode != "ranged" {
             return None;
         }
-        let (origin, end) = (self.position(actor)?, self.position(target)?);
+        let origin = self.position(actor)?;
         let visible_at_firing = self.visible_positions();
-        let path: Vec<_> = bl::line2d(
-            bl::LineAlg::Bresenham,
-            bl::Point::new(origin.x, origin.y),
-            bl::Point::new(end.x, end.y),
-        )
-        .into_iter()
-        .skip(1)
-        .map(|p| Pos {
-            x: p.x,
-            y: p.y,
-            z: origin.z,
-        })
-        .collect();
         if path.is_empty() || !path.iter().any(|p| visible_at_firing.contains(p)) {
             return None;
         }
@@ -311,23 +299,11 @@ impl Game {
         &self,
         origin: Pos,
         center: Pos,
+        mut path: Vec<Pos>,
         kind: BlastKind,
         radius: u32,
     ) -> Option<Animation> {
         let visible_at_firing = self.visible_positions();
-        let mut path: Vec<_> = bl::line2d(
-            bl::LineAlg::Bresenham,
-            bl::Point::new(origin.x, origin.y),
-            bl::Point::new(center.x, center.y),
-        )
-        .into_iter()
-        .skip(1)
-        .map(|p| Pos {
-            x: p.x,
-            y: p.y,
-            z: origin.z,
-        })
-        .collect();
         // Throwing at one's own feet still has a launch and an impact phase.
         if path.is_empty() {
             path.push(center);
@@ -467,7 +443,17 @@ impl Game {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{model::combat::Rng, model::entity::Entity, scripting::Action};
+    use crate::{
+        model::combat::Rng, model::entity::Entity, model::map::line_cells, scripting::Action,
+    };
+
+    fn test_shot(game: &Game, target: Id, weapon: Id) -> Animation {
+        let actor = game.player_id;
+        let origin = game.position(actor).unwrap();
+        let end = game.position(target).unwrap();
+        game.projectile(actor, weapon, line_cells(origin, end).collect(), true)
+            .unwrap()
+    }
 
     fn throw_setup(definition: &str) -> (Game, Id, Pos) {
         let mut game = Game::load(std::path::Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
@@ -686,7 +672,7 @@ mod tests {
     }
 
     #[test]
-    fn bullet_sprites_follow_eight_directions_and_switch_to_hit_or_miss_frames() {
+    fn bullet_and_bolt_sprites_follow_eight_directions_and_switch_to_impact_frames() {
         let _console_guard = crate::ui::CONSOLE_TEST_LOCK.lock().unwrap();
         let (game, gun, target) = setup("item.glock", "ammo.pistol");
         let origin = game.position(game.player_id).unwrap();
@@ -703,17 +689,129 @@ mod tests {
         .into_iter()
         .enumerate()
         {
-            let mut shot = game.projectile(game.player_id, target, gun, true).unwrap();
+            let mut shot = test_shot(&game, target, gun);
             shot.path = vec![origin.offset(dx, dy)];
             assert_eq!(
                 shot.effect_frame(origin.offset(dx, dy)),
                 Some(("shot.bullet", direction))
+            );
+            shot.style = Style::Bolt;
+            assert_eq!(
+                shot.effect_frame(origin.offset(dx, dy)),
+                Some(("shot.bolt", direction))
             );
             shot.elapsed_ms = shot.travel_ms() + 55.0;
             assert_eq!(shot.effect_frame(origin), Some(("impact.hit", 2)));
             shot.hit = false;
             assert_eq!(shot.effect_frame(origin), Some(("impact.miss", 2)));
         }
+    }
+
+    #[test]
+    fn ranged_attack_stops_at_the_first_successful_interception_and_animates_the_same_path() {
+        for (weapon, ammo) in [("item.m16", "ammo.rifle"), ("item.crossbow", "ammo.bolt")] {
+            let (mut game, _, origin) = throw_setup("item.frag_grenade");
+            let player = game.player_id;
+            let weapon = game.spawn(weapon, None, Some(player), 1).unwrap();
+            game.spawn(ammo, None, Some(player), 1).unwrap();
+            game.equip_auto(player, weapon).unwrap();
+            game.reload(player).unwrap();
+            let first_pos = origin.offset(2, 1);
+            let second_pos = origin.offset(4, 2);
+            let end = origin.offset(5, 2);
+            let first = game
+                .spawn("player.survivor", Some(first_pos), None, 1)
+                .unwrap();
+            let second = game
+                .spawn("monster.ghoul_worker", Some(second_pos), None, 1)
+                .unwrap();
+            let target = game
+                .spawn("monster.ghoul_worker", Some(end), None, 1)
+                .unwrap();
+            game.spawn("monster.ghoul_worker", Some(origin.offset(1, 1)), None, 1)
+                .unwrap();
+            let target_before = game.entity_snapshot(target).unwrap();
+            let second_before = game.entity_snapshot(second).unwrap();
+            let first_before = game.entity_snapshot(first).unwrap();
+            for (blocks_first, blocks_second) in [(true, true), (false, true), (false, false)] {
+                let mut probe = game.clone();
+                let seed = (0..1000)
+                    .find(|seed| {
+                        let mut rng = Rng::new(*seed);
+                        (rng.roll(100) <= 20) == blocks_first
+                            && (rng.roll(100) <= 20) == blocks_second
+                    })
+                    .unwrap();
+                probe.rng = Rng::new(seed);
+                probe.attack(player, target, Some(weapon)).unwrap();
+                assert!(
+                    matches!(&probe.entities[&weapon], Entity::Item(item) if item.loaded_ammo == 0)
+                );
+                let effect = probe.animations.back().unwrap();
+                let path = [
+                    origin.offset(1, 0),
+                    first_pos,
+                    origin.offset(3, 1),
+                    second_pos,
+                    end,
+                ];
+                let n = if blocks_first {
+                    2
+                } else if blocks_second {
+                    4
+                } else {
+                    5
+                };
+                assert_eq!(effect.path, path[..n]);
+                if blocks_first || blocks_second {
+                    assert!(effect.hit);
+                    assert_eq!(probe.entity_snapshot(target).unwrap(), target_before);
+                }
+                if blocks_first {
+                    assert!(probe.actor(first).unwrap().hp.hp < game.actor(first).unwrap().hp.hp);
+                    assert_eq!(probe.entity_snapshot(second).unwrap(), second_before);
+                } else {
+                    assert_eq!(probe.entity_snapshot(first).unwrap(), first_before);
+                    if blocks_second {
+                        assert!(
+                            probe.actor(second).unwrap().hp.hp < game.actor(second).unwrap().hp.hp
+                        );
+                    }
+                }
+            }
+            game.spawn("obstacle.stone_wall", Some(origin.offset(1, 0)), None, 1)
+                .unwrap();
+            let mut rng = game.rng.clone();
+            assert!(game.attack(player, target, Some(weapon)).is_err());
+            assert_eq!(game.rng.roll(100), rng.roll(100));
+            assert!(matches!(&game.entities[&weapon], Entity::Item(item) if item.loaded_ammo == 1));
+        }
+    }
+
+    #[test]
+    fn intercepted_throw_centers_blast_and_animation_at_the_blocking_actor() {
+        let (mut game, item, origin) = throw_setup("item.frag_grenade");
+        let center = origin.offset(2, 0);
+        let destination = origin.offset(5, 0);
+        let blocker = game
+            .spawn("monster.ghoul_brute", Some(center), None, 1)
+            .unwrap();
+        let far = game
+            .spawn("monster.ghoul_brute", Some(destination), None, 1)
+            .unwrap();
+        let blocker_hp = game.actor(blocker).unwrap().hp.hp;
+        let far_hp = game.actor(far).unwrap().hp.hp;
+        let seed = (0..100)
+            .find(|seed| Rng::new(*seed).roll(100) <= 20)
+            .unwrap();
+        game.rng = Rng::new(seed);
+        game.throw_item(game.player_id, item, destination).unwrap();
+        assert_eq!(game.actor(blocker).unwrap().hp.hp, blocker_hp - 36);
+        assert_eq!(game.actor(far).unwrap().hp.hp, far_hp);
+        assert!(matches!(&game.entities[&item], Entity::Item(item) if item.quantity == 1));
+        let effect = game.animations.back().unwrap();
+        assert_eq!(effect.path, [origin.offset(1, 0), center]);
+        assert!(!effect.blast.as_ref().unwrap().cells.contains(&destination));
     }
 
     #[test]
@@ -814,7 +912,7 @@ mod tests {
         assert!(projectile.cells().is_empty());
         let hidden = Pos { x: 40, y: 25, z: 0 };
         assert!(
-            game.thrown_projectile(hidden, hidden, BlastKind::Explosive, 2)
+            game.thrown_projectile(hidden, hidden, Vec::new(), BlastKind::Explosive, 2)
                 .is_none()
         );
     }
@@ -1117,9 +1215,8 @@ mod tests {
     fn hidden_paths_stay_hidden_and_impact_survives_target_removal() {
         let _console_guard = crate::ui::CONSOLE_TEST_LOCK.lock().unwrap();
         let (mut game, gun, target) = setup("item.glock", "ammo.pistol");
-        let player = game.player_id;
         let end = game.position(target).unwrap();
-        let mut projectile = game.projectile(player, target, gun, true).unwrap();
+        let mut projectile = test_shot(&game, target, gun);
         projectile.visible_at_firing = BTreeSet::from([end]);
         assert!(projectile.cells().is_empty());
         projectile.elapsed_ms = projectile.travel_ms();
@@ -1197,7 +1294,7 @@ mod tests {
         let _console_guard = crate::ui::CONSOLE_TEST_LOCK.lock().unwrap();
         let (mut game, gun, target) = setup("item.crossbow", "ammo.bolt");
         let player = game.player_id;
-        let mut projectile = game.projectile(player, target, gun, true).unwrap();
+        let mut projectile = test_shot(&game, target, gun);
         projectile.elapsed_ms = projectile.travel_ms() / 2.0;
         let (p, glyph, _) = projectile.cells()[0];
         game.animations.push_back(projectile);
@@ -1227,14 +1324,14 @@ mod tests {
             let layer = bl::BACKEND_INTERNAL.lock().consoles[ctx.active_console]
                 .console
                 .to_xp_layer();
-            for (offset, ch) in "2D6".chars().enumerate() {
+            for (offset, ch) in "3D6".chars().enumerate() {
                 assert_eq!(
                     layer.get(12 + offset, 13).unwrap().ch,
                     bl::to_cp437(ch) as u32
                 );
             }
             assert_eq!(layer.get(16, 13).unwrap().ch, bl::to_cp437('1') as u32);
-            assert_eq!(layer.get(17, 13).unwrap().ch, bl::to_cp437('0') as u32);
+            assert_eq!(layer.get(17, 13).unwrap().ch, bl::to_cp437('5') as u32);
         }
         game.panel = crate::game::Panel::Equipment { item: gun };
         game.render(&mut ctx);

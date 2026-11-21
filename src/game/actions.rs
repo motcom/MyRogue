@@ -63,7 +63,9 @@ impl Game {
                 self.map_zoom = (i32::from(self.map_zoom) + delta.clamp(-1, 1)).clamp(1, 4) as u8;
             }
             Action::ScrollFooting { delta } => self.scroll_footing(delta)?,
-            Action::GhoulTurn { .. } => return Err("AI action cannot be used by player".into()),
+            Action::GhoulTurn { .. } | Action::AlertAllies { .. } => {
+                return Err("AI action cannot be used by player".into());
+            }
             Action::OpenItemTarget { item } => self.open_item_target(item)?,
             Action::MoveItemTarget { dx, dy } => self.move_item_target(dx, dy)?,
             Action::ConfirmItemTarget => self.confirm_item_target()?,
@@ -105,9 +107,22 @@ impl Game {
             Action::SelectContainer { delta } => self.select_container(delta)?,
             Action::ToggleContainerSelection => self.toggle_container_selection()?,
             Action::TakeContainerSelection => self.take_container_selection()?,
+            Action::OpenPickupMenu => {
+                self.panel = Panel::PickupMenu;
+                self.selection = 0;
+            }
             Action::BeginInteract => {
                 self.panel = Panel::InteractionDirection;
                 self.selection = 0;
+            }
+            Action::BeginSmash => {
+                self.panel = Panel::SmashDirection;
+                self.selection = 0;
+            }
+            Action::SmashDirection { dx, dy } => {
+                if let Some(target) = self.choose_smash_direction(dx, dy)? {
+                    self.update_action(Action::Attack { target })?;
+                }
             }
             Action::BeginOpen => {
                 if let Some(target) = self.begin_open()? {
@@ -143,7 +158,10 @@ impl Game {
                 ensure(
                     matches!(
                         self.panel,
-                        Panel::InteractionMenu { .. } | Panel::OpenMenu { .. }
+                        Panel::PickupMenu
+                            | Panel::InteractionMenu { .. }
+                            | Panel::OpenMenu { .. }
+                            | Panel::SmashMenu { .. }
                     ),
                     "interaction menu is closed",
                 )?;
@@ -211,6 +229,9 @@ impl Game {
             }
             Action::Attack { target } => {
                 self.attack_static(target)?;
+                if matches!(self.panel, Panel::SmashDirection | Panel::SmashMenu { .. }) {
+                    self.close_panel();
+                }
             }
             Action::Shoot { target } => {
                 self.shoot(player, target)?;
@@ -234,6 +255,9 @@ impl Game {
             }
             Action::Pickup { item } => {
                 self.pickup(player, item)?;
+                if matches!(self.panel, Panel::PickupMenu) {
+                    self.close_panel();
+                }
                 self.advance_turn();
             }
             Action::Drop { item } => {

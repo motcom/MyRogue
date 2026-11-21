@@ -24,6 +24,7 @@ return {
     },
     initial_state = {},
     item = {
+        tier = 3,
         length_mm = 200,
         volume_ml = 600,
         mass_g = 800,
@@ -35,7 +36,7 @@ return {
             skill = "rifle",
             hands = "either",
             one_hand_range_penalty = 2, one_hand_accuracy_penalty = 1,
-            critical_value = 11,
+            critical_value = 16,
             base_pv = 6, strength_cap = 0, accuracy_bonus = 0,
             mode = "ranged",
             damage = { dice = 1, sides = 6, bonus = 1 },

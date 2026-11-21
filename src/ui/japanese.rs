@@ -65,7 +65,6 @@ pub fn message(text: &str) -> Cow<'_, str> {
         "Unsupported binding" => "このキー設定は未対応です",
         "No item here" => "足元にアイテムがありません",
         "No visible hostile target" => "見える範囲に敵がいません",
-        "No attackable obstacle nearby" => "隣に攻撃できる障害物がありません",
         "Unknown key" => "未対応のキーです",
         "blocked movement" => "そちらには進めません",
         "not a weapon" => "武器ではありません",

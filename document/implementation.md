@@ -20,18 +20,18 @@
 | --- | --- |
 | Game | `src/game/mod.rs`。player_id / entities / map / recipes / entity_definitions / scripts / pending_action / running / turn を所有 |
 | GameState::tick、input / update / render | `src/ui/mod.rs` がtick、`src/ui/input.rs` が入力→Action、`src/game/actions.rs` がupdate・行動適用、`src/ui/render.rs` が描画を担当 |
-| Entity enum | `src/model/entity.rs`。Movable(MoveEntity) / Static(StaticEntity) / Item(ItemEntity) を match して更新・描画 |
+| Entity enum | `src/model/entity.rs`。Map(MapEntity) / Movable(MoveEntity) / Static(StaticEntity) / Item(ItemEntity) を match して更新・描画 |
 | MoveEntity | 全体HP・部位の負傷段階、水分、正気度、六能力、Skill、Psykick、Status、Inventory、CraftJob、三栄養（初期50・上限100）を保持 |
 | HP / Status / Psykick の function 部 | LuaHookRef で on_damage / on_status / on_ability へ対応。Psykick は use_ability API から呼ぶ |
 | StaticEntity / ItemEntity | 耐久、状態、資源、設備・道具機能などを個体に保持 |
 | ItemLocation / Inventory | Ground / CarriedBy の排他的な場所と、所持品の EntityId を保持 |
-| Map / Cell | `src/model/map.rs`。位置ごとの EntityId 索引。地形本体も StaticEntity |
+| Map / Cell | `src/model/map.rs`。位置ごとの EntityId 索引。下地はセルごとに一つのMapEntity、固定物はStaticEntity |
 | Entity 定義 | `src/model/config.rs`。Lua の category 別テーブルを型付きで変換し、一種類だけであることを検証 |
 | LuaRuntime / ScriptBinding | `src/scripting.rs` と `src/model/entity.rs`。定義の関数と個体の保存可能な state を分離 |
 | CraftingSystem / Recipe / CraftJob 等 | `src/game/crafting.rs`。Luaの12レシピ、周辺と収納の材料・道具、機能レベル、技能差による確率と出来、完了時の一括消費・生成に対応 |
 | 戦闘 | `src/model/combat.rs` と `src/game/world.rs` の Game メソッド。命中、貫通、ダメージ、弾薬と死亡処理 |
 | 乱数 | `src/model/combat.rs` のRngがbracket-libのRandomNumberGeneratorを保持。scenario.seedで初期化し、Gameの複製・効果失敗時の巻き戻しでも乱数状態を保持 |
-| 追跡経路 | `src/game/world.rs` のNavigationMapでゲームの通行判定をBaseMapへ渡し、ゲーム側のBinaryHeapで重み付きDijkstraを実行（固定版bracket-libの不均一コスト制約への対応）。static.movement_costを移動先コストとして最小合計コストを選択。占有された終点は探索のみ許可し、次の一歩はcan_stepで再検査 |
+| 追跡経路 | `src/game/world.rs` のNavigationMapでゲームの通行判定をBaseMapへ渡し、ゲーム側のBinaryHeapで重み付きDijkstraを実行（固定版bracket-libの不均一コスト制約への対応）。map/static.movement_costを移動先コストとして最小合計コストを選択。占有された終点は探索のみ許可し、次の一歩はcan_stepで再検査 |
 | プロパティ | `src/ui/properties.rs`。@で現在値を表示し、スクロール・開閉はターンを消費しない |
 | インタラクト・詳細 | `src/game/interactions.rs`。e→方向→Lua登録の行動メニュー。所持品はw装備/e詳細。開閉・取得は実行時に再検査し、失敗時は巻き戻す。[仕様](interactions.md) |
 | 視野 | `src/game/visibility.rs`。Entityのblocks_sightをBaseMap::is_opaqueへ接続し、bracket-libのfield_of_viewで現在の可視マスを計算。描画・調べる・射撃対象選択に適用 |
@@ -86,7 +86,7 @@ Lua 内のグローバルや upvalue に持たせた可変状態までは巻き�
 出血/大出血/切断の継続被害、脚切断の移動遅延、手の欠損、左右装備・両手占有、逆手の被害補正、持ち方によるPV・射程・命中補正を接続した。
 包帯による部位選択・100ターン処置・止血状態をsrc/game/treatment.rsで管理し、クリティカル時の負傷進行と再出血へ接続した。手の装備は武器/盾と対応する持ち方に制限。src/ui/quick_slots.rsで所持品w→数字の登録、通常時の数字による持ち替え・消耗品使用を管理。防具はwで別部位へ直接着脱し、AV・DVを合算する。革の鎧を仮マップへ追加した。終了キーはCtrl+Q。
 宝箱の初期contentsはLua定義から個体にコピーし、src/game/containers.rsで複数選択と所持品への一括取得を扱う。中身は開閉・拾得・設置・複製で保持し、容量等の違反や途中失敗では取得全体を取り消す。箱の中身の重量も拾得判定へ含める。
-炭水化物は毎世界ターン消費点1、成立した攻撃（近接・射撃・投擲）で追加1を累計し、20点ごとに1低下する。ビタミンは20世界ターン、水分は10世界ターンごとに各1低下する。移動による追加の炭水化物消費はない。正常でタンパク質があれば毎世界ターンHP1を自然回復し、回復したHP1につきタンパク質1を消費する。HP満タン時は消費しない。タンパク質0・風邪・肺炎では自然回復を止める。
+炭水化物は毎世界ターン消費点1、成立した攻撃（近接・射撃・投擲）で追加1を累計し、20点ごとに0.25低下する。ビタミンは20世界ターンごとに0.25、水分は10世界ターンごとに1低下する。移動による追加の炭水化物消費はない。正常でタンパク質があれば毎世界ターンHP1を自然回復し、回復したHP1につきタンパク質0.25を消費する。HP満タン時は消費しない。タンパク質0・風邪・肺炎では自然回復を止める。
 
 正気度・技能などの値は保持するが、能力補正は戦闘ルールで指定した筋力と敏捷だけ。
 切断部位の再生、正気度による変化、具体的な超能力のゲーム定義、
@@ -118,14 +118,14 @@ CLIは既定でGame::load_test_mapから専用Luaシナリオを読み込む。-
 テストマップは左上の石壁付き倉庫（開始4,4・出口27,19）と右側の敵試験室に分離した。倉庫の扉を閉じた状態なら試験室を開放しても準備できることを検証する。
 Sound::Reloadとreload.wavを追加。装填成功時にプレイヤーまたは視野内の敵から一度だけ音イベントを出す。既存のキュー・巻き戻し・ミュートを使う。
 
-src/game/nutrition.rsで自然回復と風邪を世界ターンの末尾に処理する。タンパク質は自然回復時にHP1につき1消費し、満タン・病気による停止中は減らさない。食品は不足栄養をgain_nutritionで補う。
-ビタミン0では100ターンごとに1/6で正常→cold→pneumonia。ビタミン1以上では100ターンごとに1/2で逆順に一段階回復する。病気中は自然回復停止。肺炎は成功した移動の所要時間を累計し10ターンごとにHP1減少（下限1）。判定/移動カウンタは個体別で、復帰・段階変化でリセット。詳細はrule/food.md。disease_rngを戦闘用rngと分け、Game複製・失敗時の巻き戻しに含める。
+src/game/nutrition.rsで自然回復と風邪を世界ターンの末尾に処理する。タンパク質は自然回復時にHP1につき0.25消費し、満タン・病気による停止中は減らさない。食品は不足栄養をgain_nutritionで補う。
+ビタミン0では100ターンごとに1/6で正常→cold→pneumonia。ビタミンが0より大きければ100ターンごとに1/2で逆順に一段階回復する。病気中は自然回復停止。肺炎は成功した移動の所要時間を累計し10ターンごとにHP1減少（下限1）。判定/移動カウンタは個体別で、復帰・段階変化でリセット。詳細はrule/food.md。disease_rngを戦闘用rngと分け、Game複製・失敗時の巻き戻しに含める。
 満腹度の型・Lua定義・スナップショット・HUD・プロパティを廃止し、個体の三栄養を初期50・上限100へ統一した。死亡復帰でも50へ戻す。
 
 src/ui/footing.rsでプレイヤー自身を除く足元一覧を通常画面の右側に描画する。既存の可視Entity検索から自分を除外し、同一マスの生物・地形・固定物・設備・品物を描画順の上から取得する。名前は幅に合わせて折り返し、内部IDは表示せず品物の個数と効果を表示する。武器の威力・貫通・射程、防具の防御・回避、栄養・HP・水分の回復量は定義から生成し、その他の用途・副作用は既存の説明を表示する。
 一覧の行数に上限を設けず、ScrollFootingでPageUp/PageDownのページ操作を状態更新へ接続。スクロール・表示は無料。位置の実更新と死亡復帰でスクロールをリセットし、拾得/設置/削除後は現在の一覧長へ丸める。
 
-走行はAction::ToggleRunningをv（Velocity）へ割り当て、通常画面のみ無料切替。MoveEntityでスタミナ・走行状態・移動時間端数・回復消費端数を保持する。player_moveは成功した走行移動に5スタミナを使い、所要時間を1/0ターン交互としてmove_with_durationへ渡す。衝突・敵への攻撃では消費せず、攻撃は1ターン。脚切断時は走行不可。スタミナ切れで歩行へ戻り、走行OFF中のみ毎世界ターン最大5回復、実回復20ごと炭水化物1消費。HUD・プロパティへ状態を表示し、復帰で初期化する。棍棒1d2+4・メイス1d2+5へ変更。
+走行はAction::ToggleRunningをv（Velocity）へ割り当て、通常画面のみ無料切替。MoveEntityでスタミナ・走行状態・移動時間端数・回復消費端数を保持する。player_moveは成功した走行移動に5スタミナを使い、所要時間を1/0ターン交互としてmove_with_durationへ渡す。衝突・敵への攻撃では消費せず、攻撃は1ターン。脚切断時は走行不可。スタミナ切れで歩行へ戻り、走行OFF中のみ毎世界ターン最大5回復、実回復20ごと炭水化物0.25消費。HUD・プロパティへ状態を表示し、復帰で初期化する。棍棒1d2+4・メイス1d2+5へ変更。
 
 ## 手榴弾の画像演出（2026-11-16）
 

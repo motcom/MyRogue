@@ -18,6 +18,7 @@ impl Game {
             .map(|id| {
                 let entity = &self.entities[&id];
                 let kind = match entity {
+                    Entity::Map(_) => "地形",
                     Entity::Movable(_) => "生物",
                     Entity::Item(_) => "品物",
                     Entity::Static(s) => match s.role {
@@ -191,7 +192,7 @@ mod tests {
         let _console_guard = crate::ui::CONSOLE_TEST_LOCK.lock().unwrap();
         let mut g = game();
         let p = g.position(g.player_id).unwrap();
-        let terrain = g.spawn("terrain.field", Some(p), None, 1).unwrap();
+        let terrain = g.set_map_entity("terrain.field", p).unwrap();
         let lamp = g.spawn("obstacle.lamp", Some(p), None, 1).unwrap();
         let item = g.spawn("ammo.pistol", Some(p), None, 17).unwrap();
         let second = g.spawn("ammo.pistol", Some(p), None, 4).unwrap();
@@ -201,7 +202,7 @@ mod tests {
             .unwrap();
         let entries = g.footing_entries();
         let ids: Vec<_> = entries.iter().map(|(id, _)| *id).collect();
-        assert_eq!(ids.len(), 5);
+        assert_eq!(ids.len(), 4);
         for id in [terrain, lamp, item, second] {
             assert!(ids.contains(&id));
         }
@@ -331,7 +332,7 @@ mod tests {
         let layer = backend.consoles[ctx.active_console].console.to_xp_layer();
         let mut rendered = String::new();
         for y in 7..g.map.height + 2 {
-            for x in g.map.width + 3..79 {
+            for x in g.map.width.min(70) + 3..79 {
                 let ch = layer.get(x as usize, y as usize).unwrap().ch;
                 if let Some(c) = char::from_u32(ch) {
                     rendered.push(c);

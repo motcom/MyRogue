@@ -1,0 +1,239 @@
+{
+  "schema_version": 1,
+  "resolution": 64,
+  "extent": 256.0,
+  "nodes": [
+    {
+      "id": 3,
+      "name": "Shape",
+      "position": [
+        40.0,
+        400.0
+      ],
+      "kind": {
+        "type": "shape",
+        "kind": "circle",
+        "scale_x": 0.8,
+        "scale_y": 0.8,
+        "rotation": 0.0,
+        "softness": 0.0
+      },
+      "inputs": []
+    },
+    {
+      "id": 4,
+      "name": "Tile Sampler",
+      "position": [
+        300.0,
+        400.0
+      ],
+      "kind": {
+        "type": "tile_sampler",
+        "count_x": 4,
+        "count_y": 5,
+        "scale": 0.78000003,
+        "scale_x": 1.0,
+        "scale_y": 1.0,
+        "scale_random": 0.68,
+        "position_random_x": 0.48000017,
+        "position_random_y": 0.5700003,
+        "rotation": 0.0,
+        "rotation_random": 0.0,
+        "seed": 42
+      },
+      "inputs": [
+        3
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Connect Regions",
+      "position": [
+        560.0,
+        400.0
+      ],
+      "kind": {
+        "type": "connect_regions",
+        "cutoff": 0.5,
+        "width": 3,
+        "distortion": 0.03,
+        "frequency": 1.5,
+        "seed": 42,
+        "include_source": true
+      },
+      "inputs": [
+        4
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Noise",
+      "position": [
+        40.0,
+        40.0
+      ],
+      "kind": {
+        "type": "noise",
+        "kind": "cellular",
+        "seed": 42,
+        "frequency": 0.11,
+        "octaves": 4,
+        "gain": 0.5,
+        "lacunarity": 2.0
+      },
+      "inputs": []
+    },
+    {
+      "id": 7,
+      "name": "Levels",
+      "position": [
+        300.0,
+        40.0
+      ],
+      "kind": {
+        "type": "levels",
+        "contrast": 4.0,
+        "brightness": -1.0,
+        "gamma": 0.1
+      },
+      "inputs": [
+        6
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Threshold",
+      "position": [
+        560.0,
+        40.0
+      ],
+      "kind": {
+        "type": "threshold",
+        "cutoff": 0.94,
+        "softness": 0.28
+      },
+      "inputs": [
+        7
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Blend",
+      "position": [
+        857.1852,
+        70.66025
+      ],
+      "kind": {
+        "type": "blend",
+        "mode": "multiply",
+        "opacity": 0.6
+      },
+      "inputs": [
+        5,
+        8,
+        null
+      ]
+    },
+    {
+      "id": 10,
+      "name": "Levels",
+      "position": [
+        1107.2488,
+        40.2781
+      ],
+      "kind": {
+        "type": "levels",
+        "contrast": 4.0,
+        "brightness": 0.0,
+        "gamma": 1.0
+      },
+      "inputs": [
+        9
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Blur",
+      "position": [
+        839.92236,
+        377.31244
+      ],
+      "kind": {
+        "type": "blur",
+        "radius": 2
+      },
+      "inputs": [
+        5
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Terrain Palette",
+      "position": [
+        1123.618,
+        376.21835
+      ],
+      "kind": {
+        "type": "terrain",
+        "bands": [
+          {
+            "seam": {
+              "mode": "cut",
+              "width": 8
+            },
+            "max": 0.38,
+            "id": "terrain.pond",
+            "color": [
+              34,
+              70,
+              93
+            ]
+          },
+          {
+            "seam": {
+              "mode": "cut",
+              "width": 8
+            },
+            "max": 0.43,
+            "id": "terrain.road",
+            "color": [
+              171,
+              152,
+              106
+            ]
+          },
+          {
+            "seam": {
+              "mode": "cut",
+              "width": 8
+            },
+            "max": 0.86,
+            "id": "terrain.wasteland",
+            "color": [
+              134,
+              128,
+              115
+            ]
+          },
+          {
+            "seam": {
+              "mode": "cut",
+              "width": 8
+            },
+            "max": 1.0,
+            "id": "obstacle.stone_wall",
+            "color": [
+              220,
+              221,
+              213
+            ]
+          }
+        ]
+      },
+      "inputs": [
+        null
+      ]
+    }
+  ],
+  "output": 5
+}

@@ -316,7 +316,7 @@ impl MoveEntity {
     }
 
     pub fn can_regenerate(&self) -> bool {
-        self.nutrition.protein > 0 && self.respiratory_status().is_none()
+        self.nutrition.protein > 0.0 && self.respiratory_status().is_none()
     }
 
     pub fn hand_usable(&self, hand: Hand) -> bool {
@@ -336,7 +336,7 @@ impl MoveEntity {
         }
     }
     pub fn part_bleeding(&self, part: &str) -> u32 {
-        if self.treatment.stopped.contains(part) {
+        if self.treatment.bandages.contains_key(part) || self.treatment.stopped.contains(part) {
             return 0;
         }
         match self.body.get(part) {
@@ -395,6 +395,13 @@ impl MoveEntity {
         }
         Ok(())
     }
+}
+#[derive(Clone)]
+pub struct MapEntity {
+    pub script: ScriptBinding,
+    pub id: EntityId,
+    pub position: Pos,
+    pub collision: Collision,
 }
 #[derive(Clone)]
 pub struct StaticEntity {
@@ -460,7 +467,7 @@ impl Update for MoveEntity {
         for s in &mut self.status {
             s.update();
         }
-        self.nutrition.add(&Nutrition::default());
+        self.nutrition.add(&FoodNutrition::default());
     }
 }
 impl Update for StaticEntity {
@@ -481,6 +488,7 @@ impl Update for ItemEntity {
 }
 #[derive(Clone)]
 pub enum Entity {
+    Map(MapEntity),
     Movable(MoveEntity),
     Static(StaticEntity),
     Item(ItemEntity),
@@ -489,6 +497,7 @@ impl Entity {
     pub fn id(&self) -> EntityId {
         match self {
             Self::Movable(e) => e.id,
+            Self::Map(e) => e.id,
             Self::Static(e) => e.id,
             Self::Item(e) => e.id,
         }
@@ -496,6 +505,7 @@ impl Entity {
     pub fn script(&self) -> &ScriptBinding {
         match self {
             Self::Movable(e) => &e.script,
+            Self::Map(e) => &e.script,
             Self::Static(e) => &e.script,
             Self::Item(e) => &e.script,
         }
@@ -503,6 +513,7 @@ impl Entity {
     pub fn script_mut(&mut self) -> &mut ScriptBinding {
         match self {
             Self::Movable(e) => &mut e.script,
+            Self::Map(e) => &mut e.script,
             Self::Static(e) => &mut e.script,
             Self::Item(e) => &mut e.script,
         }
@@ -510,6 +521,7 @@ impl Entity {
     pub fn map_position(&self) -> Option<Pos> {
         match self {
             Self::Movable(e) => Some(e.position),
+            Self::Map(e) => Some(e.position),
             Self::Static(e) => Some(e.position),
             Self::Item(e) => match e.location {
                 ItemLocation::Ground(p) => Some(p),
@@ -529,6 +541,7 @@ impl Entity {
     pub fn blocks_movement(&self) -> bool {
         match self {
             Self::Movable(e) => e.collision.movement,
+            Self::Map(e) => e.collision.movement,
             Self::Static(e) => e.blocks_movement,
             Self::Item(e) => e.collision.movement,
         }
@@ -536,6 +549,7 @@ impl Entity {
     pub fn blocks_sight(&self) -> bool {
         match self {
             Self::Movable(e) => e.collision.sight,
+            Self::Map(e) => e.collision.sight,
             Self::Static(e) => e.blocks_sight,
             Self::Item(e) => e.collision.sight,
         }
@@ -550,6 +564,7 @@ impl Entity {
                             .is_some_and(|stage| *stage != InjuryStage::Severed)
                     })
             }
+            Self::Map(_) => true,
             Self::Static(e) => !e.destructible || e.taikyudo > 0,
             Self::Item(e) => e.quantity > 0 && (e.max_taikyudo == 0 || e.taikyudo > 0),
         }
@@ -579,6 +594,7 @@ impl Update for Entity {
     fn update(&mut self) {
         match self {
             Self::Movable(e) => e.update(),
+            Self::Map(_) => {}
             Self::Static(e) => e.update(),
             Self::Item(e) => e.update(),
         }

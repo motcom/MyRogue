@@ -239,18 +239,18 @@ fn vitamins_work_at_full_carbohydrate_and_food_hazards_consume_one() {
     let mut g = game();
     clear(&mut g);
     let p = g.player_id;
-    g.actor_mut(p).unwrap().nutrition.carbohydrate = 100;
+    g.actor_mut(p).unwrap().nutrition.carbohydrate = 100.0;
     let vitamin = held(&mut g, "item.vitamins");
     assert!(g.use_item(vitamin).unwrap());
-    assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 60);
+    assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 60.0);
     let water = held(&mut g, "item.dirty_water");
     assert!(g.use_item(water).unwrap());
     assert_eq!(g.actor(p).unwrap().hp.hp, 58);
     assert!(!g.entities.contains_key(&water));
     g.actor_mut(p).unwrap().nutrition = Nutrition {
-        protein: 100,
-        carbohydrate: 100,
-        vitamin: 100,
+        protein: 100.0,
+        carbohydrate: 100.0,
+        vitamin: 100.0,
     };
     let food = held(&mut g, "item.apple");
     assert!(!g.use_item(food).unwrap());
@@ -352,7 +352,7 @@ fn every_documented_food_can_be_used_from_inventory() {
         let p = g.player_id;
         {
             let a = g.actor_mut(p).unwrap();
-            a.nutrition.carbohydrate = 20;
+            a.nutrition.carbohydrate = 20.0;
             a.hydration.current = 20;
         }
         let item = g.spawn(kind, None, Some(p), 2).unwrap();
@@ -360,7 +360,11 @@ fn every_documented_food_can_be_used_from_inventory() {
         g.update();
         assert_eq!(g.turn, 1, "{kind}");
         let a = g.actor(p).unwrap();
-        assert_eq!(a.nutrition.carbohydrate, 20 + carbohydrate, "{kind}");
+        assert_eq!(
+            a.nutrition.carbohydrate,
+            20.0 + carbohydrate as f32,
+            "{kind}"
+        );
         assert_eq!(a.hydration.current, 20 + hydration, "{kind}");
         assert_eq!(a.hp.hp, 60 - harm + u32::from(harm > 0), "{kind}");
         assert!(
@@ -384,7 +388,7 @@ fn healing_items_work_via_registered_numbers_and_keep_no_effect_items() {
     let vitamins = held(&mut g, "item.vitamins");
     g.bind_quick_slot(vitamins, 1, None).unwrap();
     g.activate_quick_slot(1).unwrap();
-    assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 60);
+    assert_eq!(g.actor(p).unwrap().nutrition.vitamin, 60.0);
     assert_eq!(g.turn, 2);
     g.actor_mut(p).unwrap().hp.hp = 60;
     let unused = held(&mut g, "item.syringe");

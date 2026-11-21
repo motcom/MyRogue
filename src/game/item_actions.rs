@@ -126,6 +126,9 @@ impl Game {
                 .any(|id| self.entities[id].blocks_sight()),
             "投擲先が壁で塞がれています",
         )?;
+        let before = self.clone();
+        let (path, _) = self.trace_projectile(actor, center);
+        let center = path.last().copied().unwrap_or(center);
         let victims: Vec<_> = self
             .entities
             .iter()
@@ -146,8 +149,7 @@ impl Game {
             })
             .collect();
         let name = self.definition(item).common.name.clone();
-        let animation = self.thrown_projectile(origin, center, t.kind, t.radius);
-        let before = self.clone();
+        let animation = self.thrown_projectile(origin, center, path, t.kind, t.radius);
         let result = (|| {
             self.consume(item, 1)?;
             self.practice_skill(actor, crate::game::progression::SkillKind::Touteki);

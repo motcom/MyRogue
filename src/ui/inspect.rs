@@ -198,7 +198,8 @@ impl Game {
             );
             return;
         };
-        let common = &self.definition(*id).common;
+        let definition = self.definition(*id);
+        let common = &definition.common;
         let kind = match &self.entities[id] {
             Entity::Movable(actor) => match actor.kind {
                 CreatureKind::Player => "可動体・プレイヤー",
@@ -206,6 +207,7 @@ impl Game {
                 CreatureKind::Animal => "可動体・動物",
                 CreatureKind::Npc => "可動体・NPC",
             },
+            Entity::Map(_) => "地形",
             Entity::Static(entity) => match entity.role {
                 StaticRole::Terrain => "固定物・地形",
                 StaticRole::Obstacle => "固定物・障害物",
@@ -213,8 +215,21 @@ impl Game {
             },
             Entity::Item(_) => "アイテム",
         };
+        let tier = definition
+            .item
+            .as_ref()
+            .map(|item| item.tier)
+            .or_else(|| {
+                definition
+                    .movable
+                    .as_ref()
+                    .filter(|movable| matches!(movable.role, CreatureKind::Monster))
+                    .map(|movable| movable.tier)
+            })
+            .map(|tier| format!("  Tier {tier}"))
+            .unwrap_or_default();
         let title = format!(
-            "{}/{}  {} {}  種類: {kind}",
+            "{}/{}  {} {}  種類: {kind}{tier}",
             selected.min(ids.len() - 1) + 1,
             ids.len(),
             self.display_name(*id),

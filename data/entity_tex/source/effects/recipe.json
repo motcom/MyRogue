@@ -61,6 +61,17 @@
         4,
         4
       ]
+    },
+    {
+      "id": "shot.bolt",
+      "name": "クロスボウボルト・8方向",
+      "row": 0,
+      "frames": 8,
+      "source": "source/effects/bolt-sheet.png",
+      "grid": [
+        4,
+        2
+      ]
     }
   ]
 }

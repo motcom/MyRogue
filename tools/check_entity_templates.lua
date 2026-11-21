@@ -62,7 +62,7 @@ for _, path in ipairs(files) do
     assert(type(config) == "table" and config.schema_version == 2, "invalid schema")
     assert(type(config.id) == "string" and #config.id > 0 and not ids[config.id], "invalid/duplicate id")
     ids[config.id] = config
-    assert(one_of(config.category, { "movable", "static", "item" }), "unknown category")
+    assert(one_of(config.category, { "movable", "static", "map", "item" }), "unknown category")
     local common = assert(config.common)
     assert(type(common.name) == "string" and #common.name > 0)
     assert(common.description == nil or type(common.description) == "string", "invalid description")
@@ -77,7 +77,7 @@ for _, path in ipairs(files) do
     strings(common.tags)
     assert(type(config.initial_state) == "table")
     serializable(config.initial_state, {})
-    for _, category in ipairs({ "movable", "static", "item" }) do
+    for _, category in ipairs({ "movable", "static", "map", "item" }) do
         if category == config.category then
             assert(type(config[category]) == "table", "missing category data")
         else
@@ -86,9 +86,11 @@ for _, path in ipairs(files) do
     end
     if config.category == "movable" then
         local m = config.movable
+        assert(integer(m.tier or 1, 1) and (m.tier or 1) <= 10, "invalid movable tier")
         assert(one_of(m.role, { "monster", "animal", "npc", "player" }))
         assert(one_of(m.controller, { "lua", "input" }))
         assert(m.dominant_hand == nil or one_of(m.dominant_hand,{"right","left"}))
+        if m.hostile_factions then strings(m.hostile_factions) end
         assert(type(m.faction) == "string" and #m.faction > 0)
         assert(common.durability == false)
         assert(type(m.body) == "table" and next(m.body))
@@ -133,7 +135,7 @@ for _, path in ipairs(files) do
             assert(type(m.controls) == "table")
             for key, binding in pairs(m.controls) do
                 assert(type(key) == "string" and #key == 1)
-                assert(one_of(binding.type, { "move", "open_crafting", "open_inventory", "open_map", "shoot", "reload", "pickup", "open_inspect", "interact", "open" }))
+                assert(one_of(binding.type, { "move", "open_crafting", "open_inventory", "open_map", "shoot", "reload", "pickup", "open_inspect", "interact", "open", "smash" }))
                 if binding.type == "move" then
                     assert(integer(binding.dx, -1) and binding.dx <= 1)
                     assert(integer(binding.dy, -1) and binding.dy <= 1 and binding.dz == 0)
@@ -141,8 +143,20 @@ for _, path in ipairs(files) do
                 end
             end
         end
+    elseif config.category == "map" then
+        local m = config.map
+        assert(m.movement_cost >= 0.01 and m.movement_cost <= 1000)
+        assert(config.common.durability == false)
+        assert(#(m.spawns or {}) <= 32)
+        for _, rule in ipairs(m.spawns or {}) do
+            assert(type(rule.definition_id) == "string" and type(rule.chance) == "number" and rule.chance >= 0 and rule.chance <= 1)
+            assert(rule.quantity == nil or integer(rule.quantity, 1))
+            assert(rule.with_item == nil or type(rule.with_item) == "string")
+        end
     elseif config.category == "static" then
         local s = config.static
+        assert(s.placement == nil or one_of(s.placement, { "map_gen", "spawn" }))
+        assert(s.placement ~= "spawn" or config.common.durability == false or type(s.destroyed_map) == "string", "spawned destructible static requires destroyed_map")
         assert(s.movement_cost == nil or (type(s.movement_cost) == "number"
             and s.movement_cost >= 0.01 and s.movement_cost <= 1000),
             "static.movement_cost must be a finite number between 0.01 and 1000")
@@ -152,12 +166,31 @@ for _, path in ipairs(files) do
         amounts(s.resources)
     else
         local item = config.item
+        local tier = item.tier or 1
+        assert(integer(tier, 1) and tier <= 10, "invalid item tier")
         for _, name in ipairs({ "length_mm", "volume_ml", "mass_g" }) do assert(integer(item[name], 0)) end
         assert(integer(item.stack_limit, 1))
         assert(#(item.contents or {}) <= 100)
-        assert(not item.contents or #item.contents == 0 or item.stack_limit == 1)
+        assert((#(item.contents or {}) == 0 and not item.loot) or item.stack_limit == 1)
         for _, entry in ipairs(item.contents or {}) do
             assert(type(entry.definition_id) == "string" and integer(entry.quantity, 1) and entry.quantity <= 1000)
+        end
+        if item.loot then
+            local loot = item.loot
+            assert(#(item.contents or {}) == 0, "container must use fixed contents or loot")
+            assert(integer(loot.min_rolls, 1) and integer(loot.max_rolls, loot.min_rolls)
+                and loot.max_rolls <= #loot.entries and #loot.entries <= 100, "invalid loot roll range")
+            assert(#loot.tier_weights >= 1 and #loot.tier_weights <= 10, "invalid loot tier weights")
+            for _, weight in ipairs(loot.tier_weights) do
+                assert(integer(weight, 0) and weight <= 10000, "invalid loot tier weight")
+            end
+            local seen = {}
+            for _, entry in ipairs(loot.entries) do
+                local min, max = entry.min_quantity or 1, entry.max_quantity or 1
+                assert(type(entry.definition_id) == "string" and not seen[entry.definition_id]
+                    and integer(min, 1) and integer(max, min) and max <= 1000, "invalid or duplicate loot entry")
+                seen[entry.definition_id] = true
+            end
         end
         strings(item.materials, { "wood", "metal", "cloth", "leather", "stone" })
         strings(item.tool_functions, { "cutting", "wood_cutting", "hammering", "drilling", "fastening",
@@ -179,7 +212,7 @@ for _, path in ipairs(files) do
             assert(integer(weapon.one_hand_accuracy_penalty or 0,0) and (weapon.one_hand_accuracy_penalty or 0) <= 100)
             assert(weapon.hands == "either" or ((weapon.one_hand_range_penalty or 0) == 0 and (weapon.one_hand_accuracy_penalty or 0) == 0))
             damage(weapon.damage)
-            assert(integer(weapon.critical_value, 2) and weapon.critical_value <= 12, "critical_value must be 2..12")
+            assert(integer(weapon.critical_value, 3) and weapon.critical_value <= 18, "critical_value must be 3..18")
             assert(integer(weapon.range, 1) and weapon.range <= 100)
             assert(integer(weapon.base_pv, 0) and weapon.base_pv <= 30)
             assert(integer(weapon.strength_cap, 0) and weapon.strength_cap <= 30)
@@ -249,9 +282,26 @@ local function item_reference(id)
     return definition
 end
 for _, config in pairs(ids) do
+    if config.static and config.static.destroyed_map then
+        assert(ids[config.static.destroyed_map] and ids[config.static.destroyed_map].category == "map", "destroyed_map must reference map_entity")
+    end
+    for _, rule in ipairs(config.map and config.map.spawns or {}) do
+        local target = assert(ids[rule.definition_id], "missing map spawn definition")
+        if rule.with_item then item_reference(rule.with_item) end
+        assert(target.category ~= "map", "map_entity cannot spawn")
+        assert(not target.static or target.static.placement == "spawn", "map spawn static requires placement=spawn")
+        if target.item then assert((rule.quantity or 1) <= target.item.stack_limit)
+        else assert((rule.quantity or 1) == 1) end
+    end
     for _, entry in ipairs(config.item and config.item.contents or {}) do
         local content = item_reference(entry.definition_id)
-        assert(not content.item.contents or #content.item.contents == 0, "nested containers are not supported")
+        assert(#(content.item.contents or {}) == 0 and not content.item.loot, "nested containers are not supported")
+    end
+    local loot = config.item and config.item.loot
+    for _, entry in ipairs(loot and loot.entries or {}) do
+        local content = item_reference(entry.definition_id)
+        assert(#(content.item.contents or {}) == 0 and not content.item.loot, "nested containers are not supported")
+        assert((loot.tier_weights[content.item.tier or 1] or 0) > 0, "missing positive loot tier weight")
     end
     if config.category == "movable" then
         local occupied = {}

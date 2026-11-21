@@ -1,6 +1,7 @@
 //! Shared map graph format and evaluator. The editor is an optional binary.
 pub mod connections;
 pub mod graph;
+pub mod import_map;
 pub mod map_nodes;
 pub mod patterns;
 pub mod recipe;

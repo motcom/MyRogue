@@ -67,7 +67,7 @@ fn assert_index(game: &Game) {
 #[test]
 fn load_matches_class_model_and_all_terrain_is_entity() {
     let g = load();
-    assert_eq!(g.entity_definitions.len(), 77);
+    assert_eq!(g.entity_definitions.len(), 83);
     assert_eq!(g.map.depth, 1);
     let a = g.actor(g.player_id).unwrap();
     assert_eq!(a.sanity, 100);
@@ -79,7 +79,9 @@ fn load_matches_class_model_and_all_terrain_is_entity() {
     assert!(g.map.cells.iter().all(|c| {
         c.entity_ids
             .iter()
-            .any(|id| g.entities[id].script().definition_id == "terrain.field")
+            .filter(|id| matches!(g.entities[id], Entity::Map(_)))
+            .count()
+            == 1
     }));
     assert_index(&g);
 }
@@ -153,20 +155,20 @@ fn food_consumption_gains_one_units_nutrition_and_saturates() {
     let food = inventory_item(&g, "item.bread");
     let before = quantity(&g, food);
     g.actor_mut(id).unwrap().nutrition = Nutrition {
-        protein: 98,
-        carbohydrate: 0,
-        vitamin: 0,
+        protein: 98.0,
+        carbohydrate: 0.25,
+        vitamin: 0.0,
     };
     assert!(g.use_item(food).unwrap());
     assert_eq!(quantity(&g, food), before - 1);
     let a = g.actor(id).unwrap();
-    assert_eq!(a.nutrition.protein, 100);
-    assert_eq!(a.nutrition.carbohydrate, 45);
-    assert_eq!(a.nutrition.vitamin, 2);
+    assert_eq!(a.nutrition.protein, 100.0);
+    assert_eq!(a.nutrition.carbohydrate, 45.25);
+    assert_eq!(a.nutrition.vitamin, 2.0);
     g.actor_mut(id).unwrap().nutrition = Nutrition {
-        protein: 100,
-        carbohydrate: 100,
-        vitamin: 100,
+        protein: 100.0,
+        carbohydrate: 100.0,
+        vitamin: 100.0,
     };
     let turn = g.turn;
     assert!(!g.use_item(food).unwrap());
@@ -401,7 +403,7 @@ fn failed_lua_attack_batch_discards_sound_events() {
     fixture.change(
         "data/entity_templates/item.lua",
         r#"
-        definition.item.weapon.critical_value=2
+        definition.item.weapon.critical_value=3
         definition.hooks.on_use=function(self,ctx,event)
             return {effects={
                 {type="weapon_attack",attacker=event.user,target=event.target,weapon=self.id},
@@ -740,12 +742,12 @@ fn lua_enemy_tracks_and_attacks_diagonally_between_two_walls() {
 }
 
 #[test]
-fn static_movement_cost_selects_cheaper_routes_and_lua_can_query_it() {
+fn map_movement_cost_selects_cheaper_routes_and_lua_can_query_it() {
     for (cost, direct) in [(20.0, false), (0.25, true)] {
         let fixture = Fixture::new();
         fixture.change(
-            "data/entity_templates/static/road.lua",
-            &format!("definition.static.movement_cost={cost}"),
+            "data/entity_templates/map/road.lua",
+            &format!("definition.map.movement_cost={cost}"),
         );
         fixture.change("data/scenario.lua", r#"
             definition.width=9
@@ -797,17 +799,18 @@ fn static_movement_cost_selects_cheaper_routes_and_lua_can_query_it() {
             .find(|id| g.definition(**id).id == "terrain.road")
             .unwrap();
         g.remove(road);
+        g.set_map_entity("terrain.field", p).unwrap();
         assert_eq!(g.movement_cost(p), Some(2.0));
         assert_index(&g);
     }
 }
 
 #[test]
-fn static_movement_cost_defaults_and_rejects_invalid_lua_values() {
+fn map_movement_cost_defaults_and_rejects_invalid_lua_values() {
     let fixture = Fixture::new();
     fixture.change(
-        "data/entity_templates/static.lua",
-        "definition.static.movement_cost=nil",
+        "data/entity_templates/map/field.lua",
+        "definition.map.movement_cost=nil",
     );
     let g = Game::load(&fixture.0).unwrap();
     assert_eq!(g.movement_cost(g.position(g.player_id).unwrap()), Some(1.0));
@@ -823,8 +826,8 @@ fn static_movement_cost_defaults_and_rejects_invalid_lua_values() {
     ] {
         let fixture = Fixture::new();
         fixture.change(
-            "data/entity_templates/static.lua",
-            &format!("definition.static.movement_cost={value}"),
+            "data/entity_templates/map/field.lua",
+            &format!("definition.map.movement_cost={value}"),
         );
         assert!(Game::load(&fixture.0).is_err(), "accepted {value}");
     }
@@ -834,8 +837,8 @@ fn static_movement_cost_defaults_and_rejects_invalid_lua_values() {
 fn weighted_routes_match_independent_relaxation_in_both_directions() {
     let fixture = Fixture::new();
     fixture.change(
-        "data/entity_templates/static/road.lua",
-        "definition.static.movement_cost=8",
+        "data/entity_templates/map/road.lua",
+        "definition.map.movement_cost=8",
     );
     fixture.change("data/scenario.lua", r#"
         definition.width=7
@@ -980,11 +983,12 @@ fn weapon_criticals_follow_damage_rolls_for_both_sides_and_all_weapons() {
     let mut saw_damage_without_critical = false;
     let mut saw_miss = false;
     for (kind, threshold) in [
-        ("item.knife", 10),
-        ("item.club", 12),
-        ("item.glock", 11),
-        ("item.sks", 11),
-        ("item.crossbow", 10),
+        ("item.cleaver", 14),
+        ("item.knife", 15),
+        ("item.club", 17),
+        ("item.glock", 16),
+        ("item.sks", 16),
+        ("item.crossbow", 15),
     ] {
         for (attacker, target) in [(player, enemy), (enemy, player)] {
             let mut initial = base.clone();
@@ -1026,7 +1030,7 @@ fn weapon_criticals_follow_damage_rolls_for_both_sides_and_all_weapons() {
                 let outcome = combat::resolve(&mut expected_rng, accuracy, Some(dv), pv, av, &dice);
                 let mut expected_body = game.actor(target).unwrap().body.clone();
                 if outcome.damage > 0 {
-                    let roll = expected_rng.roll(6) + expected_rng.roll(6);
+                    let roll = expected_rng.roll(6) + expected_rng.roll(6) + expected_rng.roll(6);
                     if roll >= threshold {
                         let part = expected_body
                             .keys()
@@ -1061,7 +1065,7 @@ fn repeated_criticals_advance_one_stage_and_head_or_torso_severing_is_fatal() {
     let fixture = Fixture::new();
     fixture.change(
         "data/entity_templates/item.lua",
-        "definition.item.weapon.critical_value=2",
+        "definition.item.weapon.critical_value=3",
     );
     let mut base = Game::load(&fixture.0).unwrap();
     without_enemies(&mut base);
@@ -1129,8 +1133,8 @@ fn repeated_criticals_advance_one_stage_and_head_or_torso_severing_is_fatal() {
 }
 
 #[test]
-fn critical_values_are_required_and_restricted_to_two_d6() {
-    for value in ["nil", "1", "13", "10.5", "'10'"] {
+fn critical_values_are_required_and_restricted_to_three_d6() {
+    for value in ["nil", "2", "19", "15.5", "'15'"] {
         let fixture = Fixture::new();
         fixture.change(
             "data/entity_templates/item/glock.lua",
@@ -1312,6 +1316,30 @@ fn lua_container_contents_validate_references_quantities_and_stacking() {
         "definition.item.contents[1].quantity=1001",
         "definition.item.contents[1].quantity=1.5",
         "definition.item.stack_limit=2",
+    ] {
+        let fixture = Fixture::new();
+        let setup = "definition.item.loot=nil; definition.item.contents={{definition_id='item.bread',quantity=2}}";
+        fixture.change(
+            "data/entity_templates/item/treasure_chest.lua",
+            &format!("{setup}; {change}"),
+        );
+        assert!(Game::load(&fixture.0).is_err(), "{change}");
+    }
+}
+
+#[test]
+fn lua_rejects_invalid_item_tiers_and_loot_tables() {
+    for change in [
+        "definition.item.tier=0",
+        "definition.item.tier=11",
+        "definition.item.tier=1.5",
+        "definition.item.stack_limit=2",
+        "definition.item.loot.max_rolls=1",
+        "definition.item.loot.tier_weights[4]=0",
+        "definition.item.loot.entries[1].definition_id='missing.item'",
+        "definition.item.loot.entries[1].definition_id='item.treasure_chest'",
+        "definition.item.loot.entries[1].definition_id=definition.item.loot.entries[2].definition_id",
+        "definition.item.loot.entries[1].min_quantity=2",
     ] {
         let fixture = Fixture::new();
         fixture.change("data/entity_templates/item/treasure_chest.lua", change);
@@ -1503,5 +1531,51 @@ fn removed_attributes_social_skill_and_invalid_initial_sanity_are_rejected() {
         let fixture = Fixture::new();
         fixture.change("data/entity_templates/player.lua", change);
         assert!(Game::load(&fixture.0).is_err(), "{change}");
+    }
+}
+
+#[test]
+fn map_spawn_and_destroyed_base_references_are_validated_at_load_time() {
+    for (path, change) in [
+        (
+            "data/entity_templates/map/field.lua",
+            "definition.map.spawns={{definition_id='terrain.road',chance=1}}",
+        ),
+        (
+            "data/entity_templates/map/field.lua",
+            "definition.map.spawns={{definition_id='obstacle.stone_wall',chance=1}}",
+        ),
+        (
+            "data/entity_templates/map/field.lua",
+            "definition.map.spawns={{definition_id='missing.entity',chance=1}}",
+        ),
+        (
+            "data/entity_templates/map/field.lua",
+            "definition.map.spawns={{definition_id='obstacle.tree',chance=2}}",
+        ),
+        (
+            "data/entity_templates/map/field.lua",
+            "definition.map.spawns={{definition_id='obstacle.tree',chance=1,quantity=2}}",
+        ),
+        (
+            "data/entity_templates/map/field.lua",
+            "definition.map.spawns={{definition_id='monster.goblin_chief',chance=1,with_item='missing.item'}}",
+        ),
+        (
+            "data/entity_templates/map/field.lua",
+            "definition.map.spawns={{definition_id='monster.goblin_chief',chance=1,with_item='obstacle.tree'}}",
+        ),
+        (
+            "data/entity_templates/static/tree.lua",
+            "definition.static.destroyed_map='obstacle.wooden_wall'",
+        ),
+        (
+            "data/entity_templates/static/tree.lua",
+            "definition.static.destroyed_map=nil",
+        ),
+    ] {
+        let fixture = Fixture::new();
+        fixture.change(path, change);
+        assert!(Game::load(&fixture.0).is_err(), "accepted {change}");
     }
 }

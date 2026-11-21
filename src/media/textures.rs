@@ -158,6 +158,7 @@ impl TextureCatalog {
             ("burst.explosive", 4),
             ("burst.flash", 4),
             ("shot.bullet", 8),
+            ("shot.bolt", 8),
             ("impact.hit", 4),
             ("impact.miss", 4),
         ] {
@@ -479,7 +480,7 @@ mod tests {
         let manifest: Manifest =
             serde_json::from_slice(&std::fs::read(directory.join("manifest.json")).unwrap())
                 .unwrap();
-        assert_eq!(catalog.effects.len(), 32);
+        assert_eq!(catalog.effects.len(), 40);
         assert_eq!(catalog.len(), manifest.entries.len());
         for entry in manifest.effects {
             let index = catalog.effects[&entry.id];

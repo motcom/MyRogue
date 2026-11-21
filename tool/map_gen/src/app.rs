@@ -1,4 +1,5 @@
 use crate::graph::*;
+mod keyboard;
 use eframe::egui::{
     self, Color32 as Color, FontId, Pos2, Rect, Sense, Stroke, StrokeKind, TextureHandle,
     TextureOptions, Vec2,
@@ -201,7 +202,9 @@ impl Edge {
 }
 
 pub struct Editor {
+    keyboard: keyboard::Keyboard,
     graph: Graph,
+    entity_catalog: crate::entity_catalog::Catalog,
     selected: NodeId,
     selection: BTreeSet<NodeId>,
     selected_edge: Option<Edge>,
@@ -289,6 +292,8 @@ impl Editor {
         let output = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("output");
         let selected = graph.output;
         let app = Self {
+            keyboard: keyboard::Keyboard::default(),
+            entity_catalog: crate::entity_catalog::Catalog::new(),
             graph,
             selected,
             selection: BTreeSet::from([selected]),
@@ -440,7 +445,26 @@ impl Editor {
         // Defer until the canvas has its current size and navigation transform.
         self.pending_add = Some(kind);
     }
-    fn add_at_center(&mut self, kind: NodeKind, canvas: Rect) {
+    fn add_at_center(&mut self, mut kind: NodeKind, canvas: Rect) {
+        if let NodeKind::Terrain(palette) = &mut kind {
+            let entries = &self.entity_catalog.entries;
+            if entries.is_empty() {
+                self.message = "参照フォルダに選択可能なmap/static Entity IDがありません。Terrain Paletteの参照ルートを確認してください。".into();
+                return;
+            }
+            palette
+                .bands
+                .retain(|band| entries.iter().any(|entry| entry.id == band.id));
+            if palette.bands.is_empty() {
+                palette.bands.push(map_gen::terrain::TerrainBand {
+                    seam: Default::default(),
+                    max: 1.0,
+                    id: entries[0].id.clone(),
+                    color: [160, 160, 160],
+                });
+            }
+            palette.bands.last_mut().unwrap().max = 1.0;
+        }
         let position = (canvas.size() * 0.5 - self.pan) / self.zoom - Vec2::new(180.0, 290.0) * 0.5;
         match self.graph.add(kind, position.into()) {
             Ok(id) => {
@@ -473,7 +497,7 @@ impl Editor {
             let redo = ui
                 .add_enabled(!self.redo.is_empty(), egui::Button::new("↷ Redo"))
                 .clicked();
-            let text_focus = ui.ctx().egui_wants_keyboard_input();
+            let text_focus = ui.ctx().text_edit_focused();
             let redo = redo
                 || (!text_focus
                     && ui.input_mut(|i| {
@@ -616,6 +640,7 @@ impl Editor {
         }
         ui.add_space(20.0);
         ui.separator();
+        ui.weak("f: ノード選択（Shiftで追加）\nTab: ノード作成リスト（h/l:カテゴリ j/k:上下 Enter:作成 Esc:閉じる）\nc: コネクタ選択から接続\ne: エッジ選択\nDelete: 選択ノード/エッジ削除\na: 全ノードを整列\nhjklyubn: 選択ノードを移動\nShift: 移動量を大きく\nq: 全体表示  +/−: ズーム\np: 単一選択のプロパティ\nプロパティ中 j/k: 選択 h/l: 1目盛り");
         ui.label(egui::RichText::new("接続は出力 → 入力\n端子クリックでも接続\n右クリックで接続解除\n\nノードのどこでもドラッグで移動
 ダブルクリックでプレビュー\n背景の左ドラッグで矩形選択\n2本指・中ボタンでパン\nピンチ・ホイールでズーム\n線をクリックして選択\nDelete: ノード/接続削除\nEsc: 接続キャンセル").weak().size(11.0));
     }
@@ -624,9 +649,27 @@ impl Editor {
             ui.add_space(10.0);
             ui.label(egui::RichText::new("PROPERTIES").color(ACCENT).strong());
             ui.add_space(10.0);
+            ui.collapsing("Entity ID参照フォルダ", |ui| {
+                ui.label("参照ルート（絶対パス・サブフォルダも走査）");
+                let path = ui.text_edit_singleline(&mut self.entity_catalog.directory);
+                let committed = path.lost_focus()
+                    && self.entity_catalog.directory != self.entity_catalog.scanned_directory;
+                if ui.button("リロード").clicked() || committed {
+                    self.entity_catalog.reload();
+                }
+                ui.weak(format!("map/static Entity: {}件", self.entity_catalog.entries.len()));
+                ui.weak("起動時・リロード時・パス変更確定時に走査。参照ルートはこの起動中に適用します。");
+                for error in &self.entity_catalog.errors { ui.colored_label(ACCENT, error); }
+                if self.entity_catalog.entries.is_empty() { ui.colored_label(ACCENT, "選択可能なIDがありません。"); }
+            });
+            ui.separator();
             let input_nodes: Vec<_> = self.graph.nodes.iter().filter_map(|n| {
                 if let NodeKind::Input(input) = &n.kind { Some((n.id, input.key.clone())) } else { None }
             }).collect();
+            if self.selection.len() != 1 || !self.selection.contains(&self.selected) {
+                ui.weak("プロパティの編集・端子選択はノードを1つだけ選択してください。");
+                return;
+            }
             let Some(node) = self.graph.node_mut(self.selected) else {
                 ui.label("ノードを選択してください");
                 return;
@@ -639,33 +682,54 @@ impl Editor {
             );
             ui.text_edit_singleline(&mut node.name);
             ui.add_space(12.0);
+            keyboard::begin_controls(ui, &node.kind);
             match &mut node.kind {
                 NodeKind::Input(input) => {
                     ui.label("入力名（外部から指定するキー）");
                     ui.text_edit_singleline(&mut input.key);
-                    ui.horizontal(|ui| {
+                    let mode = ui.horizontal(|ui| {
                         ui.selectable_value(&mut input.mode, InputMode::Constant, "定数");
                         ui.selectable_value(&mut input.mode, InputMode::Range, "Min / Max");
                     });
-                    if ui.checkbox(&mut input.integer, "整数").changed() && input.integer {
+                    keyboard::record(ui, &mode.response, "mode", 1.0, None, false, false);
+                    if keyboard::checkbox(ui, &mut input.integer, "integer", "整数").changed() && input.integer {
                         input.value = input.value.round(); input.min = input.min.round();
                         input.max = input.max.round(); input.preview = input.preview.round();
                     }
                     let integer = input.integer;
                     let number = |ui: &mut egui::Ui, label: &str, value: &mut f64| {
-                        ui.horizontal(|ui| { ui.label(label); ui.add(egui::DragValue::new(value).speed(if integer { 1.0 } else { 0.01 }).max_decimals(if integer { 0 } else { 6 }).range(-1e9..=1e9)); });
+                        let key = match label { "Min" => "min", "Max" => "max", "定数" => "value", _ => "preview" };
+                        ui.horizontal(|ui| { ui.label(label); ui.add(keyboard::PropertyDrag::new(value).property(key).speed(if integer { 1.0 } else { 0.01 }).max_decimals(if integer { 0 } else { 6 }).range(-1e9..=1e9)); });
                     };
                     match input.mode {
                         InputMode::Constant => number(ui, "定数", &mut input.value),
                         InputMode::Range => {
                             number(ui, "Min", &mut input.min);
                             number(ui, "Max", &mut input.max);
-                            ui.checkbox(&mut input.random, "実行時に範囲内でランダム");
+                            keyboard::checkbox(ui, &mut input.random, "random", "実行時に範囲内でランダム");
                             number(ui, "仮の入力値 / 既定値", &mut input.preview);
                         }
                     }
                     if !input.validate() { ui.colored_label(ACCENT, "入力名・Min/Max・仮の値を確認してください。"); }
                     ui.weak("使うノードを選び、PARAMETER INPUTSでこの入力を割り当てます。実行時の値で試す：OFFなら仮の値、ONならSeedに従います。");
+                }
+                NodeKind::Import(imported) => {
+                    ui.label("子マップJSON（絶対パス、または起動フォルダからの相対パス）");
+                    ui.text_edit_singleline(&mut imported.json);
+                    if ui.button("読み込み / 再読み込み").clicked() {
+                        let path = PathBuf::from(&imported.json);
+                        if let Err(error) = imported.import(&path) { imported.error = error; }
+                    }
+                    if !imported.error.is_empty() { ui.colored_label(ACCENT, &imported.error); }
+                    if let Some(graph) = &imported.graph { ui.weak(format!("読込済み: {}ノード / {}セル。保存時に子手続きを同梱", graph.nodes.len(), graph.resolution)); }
+                    ui.add(keyboard::PropertyDrag::new(&mut imported.seed).property("seed").prefix("Seed "));
+                    ui.add(keyboard::PropertyDrag::new(&mut imported.count).property("count").range(1..=32).prefix("配置数 "));
+                    ui.add(keyboard::PropertyDrag::new(&mut imported.width).property("width").range(1..=1024).prefix("幅（セル） "));
+                    ui.add(keyboard::PropertyDrag::new(&mut imported.height).property("height").range(1..=1024).prefix("高さ（セル） "));
+                    for (index, label) in ["領域 X", "領域 Y", "領域 幅", "領域 高さ"].into_iter().enumerate() {
+                        ui.add(keyboard::PropertyDrag::new(&mut imported.region[index]).property(&format!("region/{index}")).range(0.0..=1.0).speed(0.01).prefix(label));
+                    }
+                    ui.weak("Backgroundに地形IDを接続。Maskの白い領域へ重ならないように配置します。子JSONの更新は再読み込みで反映します。");
                 }
                 NodeKind::Noise(noise) => {
                     combo(
@@ -682,7 +746,7 @@ impl Editor {
                     );
                     ui.horizontal(|ui| {
                         ui.label("Seed");
-                        ui.add(egui::DragValue::new(&mut noise.seed));
+                        ui.add(keyboard::PropertyDrag::new(&mut noise.seed));
                         if ui.small_button("+1").clicked() {
                             noise.seed = noise.seed.wrapping_add(1);
                         }
@@ -692,7 +756,7 @@ impl Editor {
                         !matches!(noise.kind, NoiseKind::Cellular | NoiseKind::White),
                         |ui| {
                             ui.label("Fractal / FBM");
-                            ui.add(egui::Slider::new(&mut noise.octaves, 1..=8).text("Octaves"));
+                            ui.add(keyboard::PropertySlider::new(&mut noise.octaves, 1..=8).text("Octaves"));
                             slider(ui, &mut noise.gain, 0.0..=1.0, "Gain", false);
                             slider(ui, &mut noise.lacunarity, 1.0..=4.0, "Lacunarity", false);
                         },
@@ -706,8 +770,8 @@ impl Editor {
                     slider(ui, &mut s.softness, 0.0..=0.5, "Softness", false);
                 }
                 NodeKind::TileSampler(t) => {
-                    ui.add(egui::Slider::new(&mut t.count_x, 1..=64).text("Count X"));
-                    ui.add(egui::Slider::new(&mut t.count_y, 1..=64).text("Count Y"));
+                    ui.add(keyboard::PropertySlider::new(&mut t.count_x, 1..=64).text("Count X"));
+                    ui.add(keyboard::PropertySlider::new(&mut t.count_y, 1..=64).text("Count Y"));
                     slider(ui, &mut t.scale, 0.01..=1.0, "Scale", false);
                     slider(ui, &mut t.scale_x, 0.01..=1.0, "Scale X", false);
                     slider(ui, &mut t.scale_y, 0.01..=1.0, "Scale Y", false);
@@ -736,7 +800,7 @@ impl Editor {
                     );
                     ui.horizontal(|ui| {
                         ui.label("Seed");
-                        ui.add(egui::DragValue::new(&mut t.seed));
+                        ui.add(keyboard::PropertyDrag::new(&mut t.seed));
                         if ui.small_button("+1").clicked() {
                             t.seed = t.seed.wrapping_add(1);
                         }
@@ -746,15 +810,15 @@ impl Editor {
                     );
                 }
                 NodeKind::ConnectRegions(c) => {
-                    ui.add(egui::Slider::new(&mut c.width, 1..=64).text("Width / px"));
+                    ui.add(keyboard::PropertySlider::new(&mut c.width, 1..=64).text("Width / px"));
                     slider(ui, &mut c.distortion, 0.0..=0.25, "Distortion", false);
                     slider(ui, &mut c.frequency, 0.5..=8.0, "Bend frequency", false);
                     slider(ui, &mut c.cutoff, 0.01..=1.0, "Region cutoff", false);
                     ui.horizontal(|ui| {
-                        ui.label("Seed"); ui.add(egui::DragValue::new(&mut c.seed));
+                        ui.label("Seed"); ui.add(keyboard::PropertyDrag::new(&mut c.seed));
                         if ui.small_button("+1").clicked() { c.seed = c.seed.wrapping_add(1); }
                     });
-                    ui.checkbox(&mut c.include_source, "元のブロックも出力");
+                    keyboard::checkbox(ui, &mut c.include_source, "include_source", "元のブロックも出力");
                     ui.weak("白い領域を検出して全体を接続。歪み0で直線。太さは出力ピクセル単位、歪みは画像の一辺に対する割合です。");
                 }
                 NodeKind::TerrainMerge { cutoff } => {
@@ -765,30 +829,46 @@ impl Editor {
                 NodeKind::Terrain(palette) => {
                     ui.weak("値の上限・地形ID・表示色。上限は昇順、最後は1。IDは重複不可。");
                     let mut remove = None;
+                    let used_ids: Vec<_> = palette.bands.iter().map(|band| band.id.clone()).collect();
                     for (index, band) in palette.bands.iter_mut().enumerate() {
+                        keyboard::property_prefix(ui, format!("/bands/{index}"));
                         ui.push_id(index, |ui| {
                             ui.horizontal(|ui| {
                                 ui.label(format!("#{}", index + 1));
                                 if ui.small_button("削除").clicked() { remove = Some(index); }
                             });
-                            ui.add(egui::DragValue::new(&mut band.max).range(0.0..=1.0).speed(0.005).prefix("上限 "));
-                            ui.text_edit_singleline(&mut band.id);
-                            ui.color_edit_button_srgb(&mut band.color);
-                            egui::ComboBox::from_id_salt("seam-mode").selected_text(band.seam.mode.label()).show_ui(ui, |ui| {
+                            ui.add(keyboard::PropertyDrag::new(&mut band.max).property("max").range(0.0..=1.0).speed(0.005).prefix("上限 "));
+                            let used_elsewhere = used_ids.iter().filter(|id| **id != band.id).collect::<BTreeSet<_>>();
+                            egui::ComboBox::from_id_salt("entity-id").selected_text(&band.id)
+                                .width(230.0).show_ui(ui, |ui| {
+                                    for entry in &self.entity_catalog.entries {
+                                        if !used_elsewhere.contains(&entry.id) {
+                                            ui.selectable_value(&mut band.id, entry.id.clone(), format!("{} ({})", entry.id, entry.name))
+                                                .on_hover_text(entry.path.display().to_string());
+                                        }
+                                    }
+                                });
+                            if !self.entity_catalog.entries.iter().any(|entry| entry.id == band.id) {
+                                ui.colored_label(ACCENT, "参照フォルダにないIDです。候補から選び直してください。");
+                            }
+                            let color = ui.color_edit_button_srgb(&mut band.color);
+                            for channel in 0..3 { keyboard::record(ui, &color, &format!("color/{channel}"), 1.0, Some((0.0, 255.0)), false, false); }
+                            let seam = egui::ComboBox::from_id_salt("seam-mode").selected_text(band.seam.mode.label()).show_ui(ui, |ui| {
                                 for mode in map_gen::terrain::SeamMode::ALL { ui.selectable_value(&mut band.seam.mode, mode, mode.label()); }
                             });
-                            ui.add(egui::DragValue::new(&mut band.seam.width).range(1..=128).prefix("境界幅（マス） "));
+                            keyboard::record(ui, &seam.response, "seam/mode", 1.0, None, true, false);
+                            ui.add(keyboard::PropertyDrag::new(&mut band.seam.width).property("seam/width").range(1..=128).prefix("境界幅（マス） "));
                             ui.weak("3×3生成と本編のタイル座標指定で適用。道は同じIDの近い道へ接続。");
                         });
                         ui.separator();
                     }
+                    keyboard::property_prefix(ui, String::new());
                     if let Some(index) = remove { palette.bands.remove(index); }
-                    if palette.bands.len() < 32 && ui.button("地形を追加").clicked() {
+                    let available = self.entity_catalog.entries.iter().find(|entry| !palette.bands.iter().any(|band| band.id == entry.id));
+                    if ui.add_enabled(palette.bands.len() < 32 && available.is_some(), egui::Button::new("地形を追加")).clicked() {
                         let previous = palette.bands.iter().rev().nth(1).map_or(0.0, |b| b.max);
                         if let Some(last) = palette.bands.last_mut() { last.max = (last.max + previous) * 0.5; }
-                        let mut index = palette.bands.len();
-                        while palette.bands.iter().any(|b| b.id == format!("terrain_{index}")) { index += 1; }
-                        palette.bands.push(map_gen::terrain::TerrainBand { seam: Default::default(), max: 1.0, id: format!("terrain_{index}"), color: [160,160,160] });
+                        palette.bands.push(map_gen::terrain::TerrainBand { seam: Default::default(), max: 1.0, id: available.unwrap().id.clone(), color: [160,160,160] });
                     }
                     if !palette.validate() { ui.colored_label(ACCENT, "上限・IDを確認してください（昇順・最終値1・ID一意）。"); }
                     ui.weak("出力は地形ID付き。画像加工はこのノードの前、後段はOutput・Black to Alpha・Terrain Mergeへ接続します。");
@@ -814,7 +894,7 @@ impl Editor {
                     slider(ui, softness, 0.0..=0.5, "Softness", false);
                 }
                 NodeKind::Blur { radius } => {
-                    ui.add(egui::Slider::new(radius, 0..=32).text("Radius / px"));
+                    ui.add(keyboard::PropertySlider::new(radius, 0..=32).text("Radius / px"));
                 }
                 NodeKind::Warp { strength } => {
                     slider(ui, strength, 0.0..=0.25, "Strength", false);
@@ -831,6 +911,7 @@ impl Editor {
                     ui.label("接続した画像を出力します。");
                 }
             }
+            keyboard::end_controls(ui, &mut self.keyboard, node.id);
             let mut bindings = Vec::new();
             let fields = crate::recipe::numeric_parameters(&node.kind);
             if !fields.is_empty() {
@@ -1050,6 +1131,7 @@ impl Editor {
 
     fn canvas(&mut self, ui: &mut egui::Ui) {
         let rect = ui.available_rect_before_wrap();
+        self.keyboard_view(rect);
         let response = ui.allocate_rect(rect, Sense::click_and_drag());
         let painter = ui.painter_at(rect);
         painter.rect_filled(rect, 0.0, BG);
@@ -1071,7 +1153,7 @@ impl Editor {
             let size = max - min;
             self.zoom = ((rect.width() - 50.0) / size.x)
                 .min((rect.height() - 50.0) / size.y)
-                .clamp(0.25, 1.3);
+                .clamp(0.001, 1.3);
             self.pan = (rect.size() - size * self.zoom) * 0.5 - min * self.zoom;
             self.fit = false;
         }
@@ -1133,7 +1215,7 @@ impl Editor {
             self.pan += pan;
             if factor != 1.0 && factor.is_finite() && factor > 0.0 {
                 let old = self.zoom;
-                self.zoom = (old * factor).clamp(0.25, 1.8);
+                self.zoom = (old * factor).clamp(0.001, 1.8);
                 if let Some(pointer) = ui.input(|i| i.pointer.hover_pos()) {
                     let local = pointer - rect.min;
                     self.pan = local - (local - self.pan) * (self.zoom / old);
@@ -1149,7 +1231,7 @@ impl Editor {
                 }
             }
         });
-        let step = 24.0 * self.zoom;
+        let step = (24.0 * self.zoom).max(12.0);
         let x0 = rect.left() + self.pan.x.rem_euclid(step);
         let y0 = rect.top() + self.pan.y.rem_euclid(step);
         let dot = Color::from_rgb(49, 54, 65);
@@ -1335,7 +1417,7 @@ impl Editor {
                 ui.scope_id().with(("out", node.id)),
                 Sense::click_and_drag(),
             );
-            if port.clicked() || port.drag_started() {
+            if self.selection.len() <= 1 && (port.clicked() || port.drag_started()) {
                 self.selected_edge = None;
                 self.wire = Some(node.id);
                 wire_started = true;
@@ -1366,10 +1448,11 @@ impl Editor {
                     ui.scope_id().with(("input", node.id, index)),
                     Sense::click(),
                 );
-                if port.secondary_clicked() {
+                if self.selection.len() <= 1 && port.secondary_clicked() {
                     disconnect = Some((node.id, index));
                 }
-                if self.wire.is_some()
+                if self.selection.len() <= 1
+                    && self.wire.is_some()
                     && (port.clicked()
                         || ui.input(|i| i.pointer.any_released())
                             && pointer.is_some_and(|p| r.contains(p)))
@@ -1458,7 +1541,10 @@ impl Editor {
             self.wire = None;
             self.selection.clear();
         }
-        if !ui.ctx().egui_wants_keyboard_input() {
+        if !ui.ctx().text_edit_focused()
+            && !egui::Popup::is_any_open(ui.ctx())
+            && self.recipe_location.is_none()
+        {
             if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
                 self.wire = None;
                 self.marquee_start = None;
@@ -1493,6 +1579,7 @@ impl Editor {
             FontId::monospace(11.0),
             Color::from_gray(135),
         );
+        self.keyboard_hints(&painter, rect);
     }
 }
 impl Editor {
@@ -1500,6 +1587,7 @@ impl Editor {
         self.poll(ui.ctx());
         self.skip_history = false;
         let before = self.graph.clone();
+        self.keyboard_input(ui.ctx());
         egui::Panel::top("toolbar").show(ui, |ui| self.toolbar(ui));
         egui::Panel::bottom("status").show(ui, |ui| {
             ui.horizontal(|ui| {
@@ -1530,6 +1618,7 @@ impl Editor {
         egui::CentralPanel::default()
             .frame(egui::Frame::NONE)
             .show(ui, |ui| self.canvas(ui));
+        self.keyboard_finish(ui.ctx());
         if let Some(dialog) = &mut self.recipe_location {
             let opening = dialog.opening;
             let (open, chosen) = dialog.show(ui.ctx());
@@ -1631,6 +1720,7 @@ fn checkerboard(painter: &egui::Painter, rect: Rect, cell: f32) {
 fn library_group(kind: &NodeKind) -> &'static str {
     match kind {
         NodeKind::Input(_) => "数値入力",
+        NodeKind::Import(_) => "配置・通路",
         NodeKind::Noise(_) | NodeKind::Shape(_) | NodeKind::Constant { .. } => "形状・ノイズ",
         NodeKind::TileSampler(_)
         | NodeKind::ConnectRegions(_)
@@ -1715,7 +1805,11 @@ fn slider(
     label: &str,
     log: bool,
 ) {
-    ui.add(egui::Slider::new(value, range).text(label).logarithmic(log));
+    ui.add(
+        keyboard::PropertySlider::new(value, range)
+            .text(label)
+            .logarithmic(log),
+    );
 }
 fn combo<T: Copy + PartialEq + std::fmt::Debug>(
     ui: &mut egui::Ui,
@@ -1723,28 +1817,29 @@ fn combo<T: Copy + PartialEq + std::fmt::Debug>(
     value: &mut T,
     all: &[T],
 ) {
-    egui::ComboBox::from_label(label)
+    let response = egui::ComboBox::from_label(label)
         .selected_text(format!("{value:?}"))
         .show_ui(ui, |ui| {
             for &option in all {
                 ui.selectable_value(value, option, format!("{option:?}"));
             }
         });
+    keyboard::record_combo(ui, &response.response, label);
 }
 fn map_properties(ui: &mut egui::Ui, node: &mut MapNode) {
     match node {
         MapNode::Morphology { mode, radius, .. } => {
             combo(ui, "Mode", mode, &[MorphMode::Dilate, MorphMode::Erode]);
-            ui.add(egui::Slider::new(radius, 0..=64).text("Radius / px"));
+            ui.add(keyboard::PropertySlider::new(radius, 0..=64).text("Radius / px"));
             ui.weak("白い領域を円形距離で拡大 / 縮小します。画像外は黒です。");
         }
         MapNode::Outline { width, .. } => {
-            ui.add(egui::Slider::new(width, 1..=64).text("Wall width / px"));
+            ui.add(keyboard::PropertySlider::new(width, 1..=64).text("Wall width / px"));
             ui.weak("白い領域の外側に壁のマスクを生成します。");
         }
         MapNode::Distance { range, inside, .. } => {
             slider(ui, range, 1.0..=1024.0, "Distance range / px", false);
-            ui.checkbox(inside, "白い領域の内側の距離");
+            keyboard::checkbox(ui, inside, "inside", "白い領域の内側の距離");
             ui.weak("ON：壁までの距離。OFF：白い領域までの距離。Rangeで白に到達します。");
         }
         MapNode::Scatter {
@@ -1754,7 +1849,7 @@ fn map_properties(ui: &mut egui::Ui, node: &mut MapNode) {
             seed,
             ..
         } => {
-            ui.add(egui::Slider::new(count, 0..=4096).text("Count"));
+            ui.add(keyboard::PropertySlider::new(count, 0..=4096).text("Count"));
             slider(
                 ui,
                 min_distance,
@@ -1762,7 +1857,7 @@ fn map_properties(ui: &mut egui::Ui, node: &mut MapNode) {
                 "Min center distance / px",
                 false,
             );
-            ui.add(egui::Slider::new(radius, 0..=32).text("Point radius / px"));
+            ui.add(keyboard::PropertySlider::new(radius, 0..=32).text("Point radius / px"));
             map_seed(ui, seed);
             ui.weak("白い領域内へ間隔を空けて配置。半径0で1ピクセル。置ける数が足りない場合は少なくなります。");
         }
@@ -1775,13 +1870,18 @@ fn map_properties(ui: &mut egui::Ui, node: &mut MapNode) {
             spacing,
             ..
         } => {
-            ui.checkbox(rectangle, "矩形モード（壁の向きに自動回転）");
+            keyboard::checkbox(
+                ui,
+                rectangle,
+                "rectangle",
+                "矩形モード（壁の向きに自動回転）",
+            );
             if *rectangle {
-                ui.add(egui::Slider::new(depth, 1..=64).text("Depth / px"));
-                ui.checkbox(merge, "向かい合う入口を統合");
+                ui.add(keyboard::PropertySlider::new(depth, 1..=64).text("Depth / px"));
+                keyboard::checkbox(ui, merge, "merge", "向かい合う入口を統合");
             }
             slider(ui, offset, 0.0..=64.0, "Outward offset / px", false);
-            ui.add(egui::Slider::new(width, 1..=64).text("Marker width / px"));
+            ui.add(keyboard::PropertySlider::new(width, 1..=64).text("Marker width / px"));
             slider(ui, spacing, 0.0..=1024.0, "Min spacing / px", false);
             ui.weak("Roomsの縁とCorridorsが重なる場所に入口候補を配置。通路は部屋の内側まで接続してください。");
         }
@@ -1794,12 +1894,12 @@ fn map_properties(ui: &mut egui::Ui, node: &mut MapNode) {
             include_source,
             ..
         } => {
-            ui.add(egui::Slider::new(count, 0..=64).text("Extra paths"));
-            ui.add(egui::Slider::new(width, 1..=64).text("Width / px"));
+            ui.add(keyboard::PropertySlider::new(count, 0..=64).text("Extra paths"));
+            ui.add(keyboard::PropertySlider::new(width, 1..=64).text("Width / px"));
             slider(ui, distortion, 0.0..=0.25, "Distortion", false);
             slider(ui, frequency, 0.5..=8.0, "Bend frequency", false);
             map_seed(ui, seed);
-            ui.checkbox(include_source, "部屋と既存の道も出力");
+            keyboard::checkbox(ui, include_source, "include_source", "部屋と既存の道も出力");
             ui.weak("基本の木構造以外の接続を追加。元画像だけで埋まる候補は除きます。最大512領域、追加本数は上限です。");
         }
         MapNode::SelectRegions {
@@ -1809,16 +1909,23 @@ fn map_properties(ui: &mut egui::Ui, node: &mut MapNode) {
             ..
         } => {
             ui.add(
-                egui::DragValue::new(min_area)
+                keyboard::PropertyDrag::new(min_area)
+                    .property("min_area")
                     .range(1..=1048576)
                     .prefix("Min area / px: "),
             );
             ui.add(
-                egui::DragValue::new(max_area)
+                keyboard::PropertyDrag::new(max_area)
+                    .property("max_area")
                     .range(1..=1048576)
                     .prefix("Max area / px: "),
             );
-            ui.checkbox(largest_only, "面積条件に合う最大の領域だけ残す");
+            keyboard::checkbox(
+                ui,
+                largest_only,
+                "largest_only",
+                "面積条件に合う最大の領域だけ残す",
+            );
         }
         MapNode::Cellular {
             iterations,
@@ -1826,9 +1933,9 @@ fn map_properties(ui: &mut egui::Ui, node: &mut MapNode) {
             survival_limit,
             ..
         } => {
-            ui.add(egui::Slider::new(iterations, 0..=64).text("Iterations"));
-            ui.add(egui::Slider::new(birth_limit, 0..=8).text("Birth neighbors"));
-            ui.add(egui::Slider::new(survival_limit, 0..=8).text("Survival neighbors"));
+            ui.add(keyboard::PropertySlider::new(iterations, 0..=64).text("Iterations"));
+            ui.add(keyboard::PropertySlider::new(birth_limit, 0..=8).text("Birth neighbors"));
+            ui.add(keyboard::PropertySlider::new(survival_limit, 0..=8).text("Survival neighbors"));
             ui.weak("周囲8マスの白い数が閾値以上なら白にします。画像外は黒です。");
         }
         MapNode::Partition {
@@ -1838,9 +1945,9 @@ fn map_properties(ui: &mut egui::Ui, node: &mut MapNode) {
             seed,
             ..
         } => {
-            ui.add(egui::Slider::new(min_size, 2..=512).text("Min child size / px"));
-            ui.add(egui::Slider::new(depth, 0..=8).text("Split depth"));
-            ui.add(egui::Slider::new(wall_width, 1..=32).text("Divider width / px"));
+            ui.add(keyboard::PropertySlider::new(min_size, 2..=512).text("Min child size / px"));
+            ui.add(keyboard::PropertySlider::new(depth, 0..=8).text("Split depth"));
+            ui.add(keyboard::PropertySlider::new(wall_width, 1..=32).text("Divider width / px"));
             map_seed(ui, seed);
             ui.weak(
                 "各領域を矩形で再帰分割し、仕切りを黒く抜きます。後段のConnect Regionsで通路を追加できます。",
@@ -1849,8 +1956,8 @@ fn map_properties(ui: &mut egui::Ui, node: &mut MapNode) {
         MapNode::Reachable {
             start_x, start_y, ..
         } => {
-            ui.add(egui::Slider::new(start_x, 0..=1023).text("Start X / px"));
-            ui.add(egui::Slider::new(start_y, 0..=1023).text("Start Y / px"));
+            ui.add(keyboard::PropertySlider::new(start_x, 0..=1023).text("Start X / px"));
+            ui.add(keyboard::PropertySlider::new(start_y, 0..=1023).text("Start Y / px"));
             ui.weak("指定した白い開始点から上下左右に到達できる領域だけ出力。開始点が黒なら空になります。");
         }
     }
@@ -1871,7 +1978,7 @@ fn map_properties(ui: &mut egui::Ui, node: &mut MapNode) {
 fn map_seed(ui: &mut egui::Ui, seed: &mut u64) {
     ui.horizontal(|ui| {
         ui.label("Seed");
-        ui.add(egui::DragValue::new(seed));
+        ui.add(keyboard::PropertyDrag::new(seed));
         if ui.small_button("+1").clicked() {
             *seed = seed.wrapping_add(1);
         }
@@ -1946,6 +2053,28 @@ mod tests {
             );
         }
     }
+    #[test]
+    fn new_terrain_nodes_only_use_scanned_entity_ids() {
+        let ctx = egui::Context::default();
+        let mut app = Editor::with_context(&ctx, Graph::default());
+        let canvas = Rect::from_min_size(Pos2::ZERO, Vec2::new(800.0, 600.0));
+        app.add_at_center(NodeKind::Terrain(Default::default()), canvas);
+        let NodeKind::Terrain(palette) = &app.graph.node(app.selected).unwrap().kind else {
+            panic!("Terrain node expected");
+        };
+        assert!(palette.validate());
+        assert!(palette.bands.iter().all(|band| {
+            app.entity_catalog
+                .entries
+                .iter()
+                .any(|entry| entry.id == band.id)
+        }));
+        let count = app.graph.nodes.len();
+        app.entity_catalog.entries.clear();
+        app.add_at_center(NodeKind::Terrain(Default::default()), canvas);
+        assert_eq!(app.graph.nodes.len(), count);
+    }
+
     #[test]
     fn neighborhood_worker_preview_and_export_use_the_same_atlas() {
         let ctx = egui::Context::default();

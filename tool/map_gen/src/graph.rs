@@ -107,6 +107,7 @@ impl BlendMode {
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum NodeKind {
     Input(NumberInput),
+    Import(crate::import_map::ImportMap),
     Terrain(crate::terrain::TerrainPalette),
     TerrainMerge {
         cutoff: f32,
@@ -146,6 +147,7 @@ impl NodeKind {
     pub fn catalog() -> Vec<Self> {
         let mut nodes = vec![
             Self::Input(NumberInput::default()),
+            Self::Import(Default::default()),
             Self::Terrain(Default::default()),
             Self::TerrainMerge { cutoff: 0.5 },
             Self::Noise(Noise::default()),
@@ -177,7 +179,7 @@ impl NodeKind {
     }
     pub fn category(&self) -> &'static str {
         match self {
-            Self::Input(_) => "INPUTS",
+            Self::Input(_) | Self::Import(_) => "INPUTS",
             Self::Map(_) => "MAP OPERATORS",
             Self::Noise(_) | Self::Shape(_) | Self::Constant { .. } => "GENERATORS",
             Self::TileSampler(_) | Self::ConnectRegions(_) => "COMPOSITE",
@@ -189,6 +191,7 @@ impl NodeKind {
     pub fn validate(&self) -> bool {
         match self {
             Self::Input(n) => n.validate(),
+            Self::Import(n) => n.validate(),
             Self::Terrain(p) => p.validate(),
             Self::TerrainMerge { cutoff } => finite(*cutoff, 0.0, 1.0),
             Self::Map(n) => n.validate(),
@@ -228,6 +231,7 @@ impl ImageNode for NodeKind {
     fn title(&self) -> &'static str {
         match self {
             Self::Input(_) => "Number Input",
+            Self::Import(_) => "Import Map JSON",
             Self::Terrain(_) => "Terrain Palette",
             Self::TerrainMerge { .. } => "Terrain Merge",
             Self::Map(n) => n.title(),
@@ -252,6 +256,7 @@ impl ImageNode for NodeKind {
             Self::Blend { .. } | Self::TerrainMerge { .. } => {
                 &["Background", "Foreground", "Mask (optional)"]
             }
+            Self::Import(_) => &["Background", "Region Mask (optional)"],
             Self::Warp { .. } => &["Source", "Displacement"],
             Self::Map(n) => n.inputs(),
             _ => &["Source"],
@@ -265,6 +270,8 @@ impl ImageNode for NodeKind {
     ) -> Result<Image> {
         let required = if matches!(self, Self::Blend { .. } | Self::TerrainMerge { .. }) {
             2
+        } else if matches!(self, Self::Import(_)) {
+            1
         } else {
             self.inputs().len()
         };
@@ -281,6 +288,9 @@ impl ImageNode for NodeKind {
         }
         if !self.validate() {
             return Err("ノードのパラメータが範囲外です".into());
+        }
+        if let Self::Import(node) = self {
+            return node.render(&inputs[0], inputs.get(1).map(AsRef::as_ref), cancelled);
         }
         if let Self::TerrainMerge { cutoff } = self {
             return crate::terrain::merge(
@@ -389,7 +399,8 @@ impl ImageNode for NodeKind {
                         (x as f32 + 0.5) / size as f32,
                         (y as f32 + 0.5) / size as f32,
                     ),
-                    Self::TileSampler(_)
+                    Self::Import(_)
+                    | Self::TileSampler(_)
                     | Self::ConnectRegions(_)
                     | Self::Map(_)
                     | Self::Terrain(_)
@@ -748,6 +759,7 @@ impl Graph {
                 if !node.parameters.contains_key("seed") {
                     let key = format!("node_{}", node.id);
                     match &mut node.kind {
+                        NodeKind::Import(n) => n.seed = derive_seed(seed ^ n.seed, &key),
                         NodeKind::Noise(n) => n.seed = derive_seed(seed ^ n.seed, &key),
                         NodeKind::TileSampler(n) => n.seed = derive_seed(seed ^ n.seed, &key),
                         NodeKind::ConnectRegions(n) => n.seed = derive_seed(seed ^ n.seed, &key),
@@ -807,6 +819,7 @@ impl Graph {
                         node.kind,
                         NodeKind::Blend { .. } | NodeKind::TerrainMerge { .. }
                     ) && i == 2
+                        || matches!(node.kind, NodeKind::Import(_)) && i == 1
                     {
                         break;
                     } else {

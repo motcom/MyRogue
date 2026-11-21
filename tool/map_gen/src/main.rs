@@ -1,4 +1,5 @@
 mod app;
+mod entity_catalog;
 use graph::*;
 use map_gen::{graph, recipe};
 use std::{error::Error, path::Path};

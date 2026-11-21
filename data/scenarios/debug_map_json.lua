@@ -1,6 +1,7 @@
--- 起動時のJSON選択に使うデバッグ設定。地形IDの対応・Seed・プレイヤーはLuaで管理。
+-- JSONからマップを生成する起動設定。地形IDの対応・Seed・プレイヤーはLuaで管理。
 -- Terrain PaletteにはEntityの正式IDも直接指定できる。
 return {
+    populate_map = true,
     width = 32, height = 32, seed = 42,
     ground = "terrain.field", boundary = "obstacle.stone_wall",
     map_generator = {

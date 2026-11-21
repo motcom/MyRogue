@@ -5,7 +5,7 @@ edition = "2024"
 
 [features]
 default = ["editor"]
-editor = ["dep:eframe", "dep:image"]
+editor = ["dep:eframe", "dep:image", "dep:mlua"]
 
 [[bin]]
 name = "map_gen"
@@ -18,3 +18,4 @@ eframe = { optional = true, version = "0.37.0", default-features = false, featur
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 image = { optional = true, version = "0.24.9", default-features = false, features = ["png"] }
+mlua = { optional = true, version = "0.12.2", features = ["lua54", "vendored"] }

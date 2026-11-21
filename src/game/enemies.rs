@@ -14,6 +14,50 @@ pub enum GhoulBehavior {
     Rifleman,
 }
 impl Game {
+    pub(crate) fn alert_allies(
+        &mut self,
+        actor: Id,
+        target: Id,
+        radius: u32,
+        duration: u64,
+    ) -> Result<()> {
+        ensure(
+            (1..=32).contains(&radius) && (1..=100).contains(&duration),
+            "invalid alert range/duration",
+        )?;
+        let origin = self.position(actor).ok_or("alert actor missing")?;
+        let goal = self.position(target).ok_or("alert target missing")?;
+        ensure(
+            self.entities[&actor].alive()
+                && self.entities[&target].alive()
+                && self.sight(origin, goal),
+            "invalid alert target",
+        )?;
+        let faction = self
+            .faction(actor)
+            .ok_or("alert actor faction missing")?
+            .to_owned();
+        let allies: Vec<_> = self
+            .entities
+            .iter()
+            .filter_map(|(id, e)| {
+                (e.alive()
+                    && self.actor(*id).is_some()
+                    && self.faction(*id) == Some(faction.as_str())
+                    && e.map_position()
+                        .is_some_and(|p| p.distance(origin) <= radius as i32))
+                .then_some(*id)
+            })
+            .collect();
+        for id in allies {
+            let until = self.turn.saturating_add(duration);
+            let ally = self.actor_mut(id).unwrap();
+            ally.alert_position = Some(goal);
+            ally.alert_until = until;
+        }
+        Ok(())
+    }
+
     pub(crate) fn ghoul_turn(&mut self, actor: Id, behavior: GhoulBehavior) -> Result<()> {
         use GhoulBehavior::*;
         let a = self.actor(actor).ok_or("not an actor")?;

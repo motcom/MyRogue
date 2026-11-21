@@ -17,31 +17,32 @@ Entityの種類・能力・行動・制作レシピと調整値はLua、世界�
 | テンプレート | category | 用途 |
 | --- | --- | --- |
 | `data/entity_templates/player.lua` | `movable` | 生存者プレイヤーの具体例 |
-| `data/entity_templates/static.lua` | `static` | 野原の具体例 |
+| `data/entity_templates/map/field.lua` | `map` | 野原。道・池・荒地もmapフォルダに配置 |
 | `data/entity_templates/item.lua` | `item` | ナイフの具体例 |
 
-Rust の `Entity` enum は `Movable` / `Static` / `Item` の三種類で `match` する。
+Rust の `Entity` enum は `Map` / `Movable` / `Static` / `Item` の四種類で `match` する。
 設定上の種類が増えても enum の variant は増やさず、定義 ID で区別する。
 プレイヤーも movable とし、操作対象の個体 ID を `Game.player_id` が参照する。
 
 ## entity_document に基づく具体定義
 
 プレイヤーの操作は `document/entity_document/player_entity.md` を優先する。参照元は `document/entity_document/movable_entity.md`、`static_entity.md`、`item_entity.md`。
-現在の定義は77件。下表は既存27件で、以前の追加36件は後述。制作の追加14件（工具7・材料6・収納1）は [Item仕様](entity_document/item_entity.md) を参照。威力・射程・耐久・重量などの値はゲーム用の仮設定。
+現在の定義は83件。ゴブリン6件は[goblins.md](goblins.md)を参照。下表は既存27件で、以前の追加36件は後述。制作の追加14件（工具7・材料6・収納1）は [Item仕様](entity_document/item_entity.md) を参照。威力・射程・耐久・重量などの値はゲーム用の仮設定。
 
 | 種類 | 定義 |
 | --- | --- |
 | movable（4） | 生存者、グール ワーカー、グール ウォーリア、グール アーチャー |
-| static（6） | 野原、道、石壁、木、池、木の扉 |
+| map（4） | 野原、道、池、荒地 |
+| static（11） | 石壁、木、針葉樹、木の扉、木壁、テーブル、椅子、生垣、柵、ランプ、作業台 |
 | item（資料の9件） | ナイフ、棍棒、グロック、クロスボウ、SKS、包帯、注射器、パン、ミネラルウォーター |
 | 防具 item（1） | 革の鎧 |
 | 補助 item（5） | 拳銃弾、クロスボウボルト、ライフル弾、木材、宝箱 |
 | 既存案から保持（2） | 万力付き作業台、ハンマー |
 
 - `movable/`：ワーカーは近接攻撃、ウォーリアは高い耐久と棍棒、アーチャーはクロスボウとボルトを持つ。攻撃可能なら攻撃し、そうでなければ接近。敵も経路もなければ待機する。
-- `static/`：道・石壁・木・池。木は破壊後に木材を二個生成する。池は泳ぎ未対応のため通行不可。
+- `map/`：野原・道・池・荒地。`static/`：石壁・木・家具・設備。木は破壊後に木材を二個生成する。池は泳ぎ未対応のため通行不可。
 - `item/`：近接・遠距離武器、消耗品、弾薬、木材。武器の使用は Rust への攻撃要求を返す。
-- 包帯は選択した出血部位を100ターンで止血する。傷の汚染と消毒は採用しない。注射器は内容未指定のため、今回は架空の回復薬入りとして設定。回復条件を満たさない場合には消費しない。
+- 包帯は選択した部位の出血ダメージを即座に止め、100ターン後に処置が完了する。傷の汚染と消毒は採用しない。注射器は内容未指定のため、今回は架空の回復薬入りとして設定。回復条件を満たさない場合には消費しない。
 - パンは三栄養、ミネラルウォーターは水分を回復する。使用者自身への飲食に限定する。
 
 survivor と ghoul は敵対、ghoul 同士は味方という初期ルールを想定する。
@@ -54,7 +55,7 @@ survivor と ghoul は敵対、ghoul 同士は味方という初期ルールを�
 | --- | --- |
 | `schema_version` | この形式では整数 `2`（ダメージダイス形式） |
 | `id` | 定義の文字列 ID。例 `monster.ghoul_worker`。全定義間で重複不可 |
-| `category` | `movable` / `static` / `item` のいずれか |
+| `category` | `map` / `movable` / `static` / `item` のいずれか |
 | `common.name` | 表示名 |
 | `common.description` | カーソルモードに表示する説明文（省略可）。未指定なら未登録の案内を表示 |
 | `common.appearance` | `glyph`、RGB の `fg` / `bg`、描画順 `layer` |
@@ -77,18 +78,22 @@ survivor と ghoul は敵対、ghoul 同士は味方という初期ルールを�
 
 ### 種類別の項目
 
-- `movable`：`role`、`controller`、`faction`、全体の初期最大HP `hp` と六部位名の配列 `body`、能力値 `attributes`、`skills`、所持容量 `inventory`、`senses`、`attack`、初期所持品 `loadout`、水分 `needs`、入力制御用 `controls`。
-- `static`：`role`（terrain / obstacle / facility）、提供する `facilities`、初期 `resources`、経路コスト `movement_cost`（省略時1、有限数0.01〜1000）。
-- `item`：`length_mm`、`volume_ml`、`mass_g`、`stack_limit`、`materials`、`tool_functions`、初期 `resources`、任意の `weapon`・`use`、食料・飲料の `nutrition`。
+- `movable`：`role`、`controller`、`faction`、`tier`（整数1〜10、省略時1）、全体の初期最大HP `hp` と六部位名の配列 `body`、能力値 `attributes`、`skills`、所持容量 `inventory`、`senses`、`attack`、初期所持品 `loadout`、水分 `needs`、入力制御用 `controls`。
+- `map`：`movement_cost`と初期生成する`spawns`（ID・chance・quantity）。通常spawn不可、セルの下地として設定する。[map_entityの仕様](entity_document/map_entity.md)を参照。
+- `static`：`placement`（map_gen / spawn）、spawnする破壊可能物は`destroyed_map`（map分類への参照）を持つ。`role`（terrain / obstacle / facility）、提供する `facilities`、初期 `resources`、経路コスト `movement_cost`（省略時1、有限数0.01〜1000）。
+- `item`：`tier`（整数1〜10、省略時1）、`length_mm`、`volume_ml`、`mass_g`、`stack_limit`、`materials`、`tool_functions`、初期 `resources`、任意の `weapon`・`use`、食料・飲料の `nutrition`。
 
 長さは mm、容量は ml、重量は g。item の数値は一個あたり。
 movable の `hp` を生命力として扱い、共通 durability は `false` にする。
 最大 HP から現在 HP を初期化する。初期の死亡条件・攻撃処理は [戦闘ルール](../rule/combat.md) に記載する。
 `controller = "lua"` は Lua が行動を選び、`"input"` は入力された Action を実行する。
 `loadout` は `{ definition_id, quantity, equipped?, grip? }` の配列。個体生成時に一度だけ所持品を生成する。
+
+`role = "monster"` の個体が死ぬと、`data/monster_drops.lua` の同ティア枠から等確率で1品目を選び、数量範囲に従って死亡マスへ置く。その後、既存処理で所持品も同じマスに落とす。抽選はシナリオのシードと個体IDから決まり、戦闘用乱数は消費しない。
 `equipped = true` は持ち方を自動指定する。`grip` でright/left/bothを指定でき、手が競合する初期装備は拒否する。装備する品のquantityは1。非装備のquantityは合計個数で、必要ならスタック上限ごとに分割する。
 `needs` はhydrationのみの `{ max, initial }`。10ターンごとに1減少する。satietyは廃止し、指定を拒否する。
 `controls` はキーから入力命令への対応。h/j/k/l と y/u/b/n で八方向移動する。
+`s` の `{ type = "smash" }` は固定物を攻撃するための方向選択を開く。
 p/i/m は製作・所持品・マップの画面を開く命令で、画面を開くだけではターンを消費しない。
 `weapon` は mode / range / base_pv / strength_cap / accuracy_bonus と damage・弾薬設定を持つ。
 近接・遠距離とも damage = `{ dice, sides, bonus }` を必須とする。補正は damage.bonus に含める。弾薬は `common.tags` に `"ammunition"` を持つ通常のItemで、武器の ammo_definition_id から参照する。弾薬独自のダメージ値は持たない。
@@ -100,11 +105,11 @@ movable と static の combat に base_av、movable には dv_bonus / accuracy_b
 `magazine_capacity` がある遠距離武器は未装填で生成する。r の `reload` で所持弾薬を弾倉へ移し、射撃時に弾倉から `ammo_per_attack` 発を消費する。装填数は個体の `loaded_ammo` に保持する。省略した既存定義は所持弾薬の直接消費を継続する。
 `use` は消耗品の効果パラメータで、実際の効果の選択は hooks.on_use に記述する。
 食料・飲料の `nutrition` は `{ protein, carbohydrate, vitamin }`。各値は一個あたりの栄養ポイントで、
-三つ全てを `u32` の範囲の整数で指定する。食品一個の量と個体の栄養値を区別し、個体は初期50・上限100。水分は別に保持する。
+三つ全てを `u32` の範囲の整数で指定する。個体の栄養残量は小数で保持し、初期50・上限100。水分は別に保持する。
 具体的な型・摂取処理・値の範囲は [食料ルール](../rule/food.md) に記載する。
 `role` は分類であり、具体的なモンスター名・木の種類などは `id` で増やす。
 
-static テンプレートから次のように設定を変えて地形も定義する。
+野原・道・池・荒地はmap分類、障害物・設備はstatic分類に分ける。以下は表示・衝突の設定例（map分類にrole/facilitiesはない）。
 
 | 定義の例 | role | 通行を妨げる | 視線を遮る | layer | facilities |
 | --- | --- | --- | --- | --- | --- |
@@ -177,23 +182,31 @@ Lua のコピーを直接変更してもゲーム本体へは反映しない。�
 | `ctx:entity(id)` | 個体情報、存在しなければ `nil` |
 | `ctx:entities_at(position)` | その位置の個体情報の配列。地面も含む |
 | `ctx:nearest_hostile(id, range)` | 視認できる範囲内の最も近い敵。いなければ `nil` |
+| `ctx:can_reload(actor)` | 装備中の遠距離武器に所持弾薬を装填できるか |
 | `ctx:adjacent(a, b)` | 同じ z で八方向に隣接しているか |
 | `ctx:can_attack(actor, target, weapon?)` | 攻撃できるか。射程・視線・所持・耐久・弾薬も確認。武器省略時は装備武器、使えなければ素手の近接攻撃を試す |
 | `ctx:movement_cost(position)` | 固定Entityの優先順から決めたマスの経路コスト。マップ外は `nil`。通行可否とは別 |
 | `ctx:step_towards(actor, target)` | 重み付きDijkstraで求めた通行可能な経路上の次の位置。到達不能・同じ位置・対象不在・次の位置が占有されている場合は `nil` |
+| `ctx:can_step(actor, position)` | 隣接マスへ移動可能か。占有・境界・部位制限を既存処理で判定 |
+| `ctx:nearby_items(actor, range)` | 視認できる生存中の地上アイテムを距離・ID順に返す。範囲は最大32 |
+| `ctx:step_towards_position(actor, position)` | 指定位置へ向かう重み付き経路の次の一歩。警報位置への追跡にも使用 |
 | `ctx:random_int(min, max)` | 将来用。初回実装では未公開。戦闘の乱数は Rust 側で処理 |
 
-八方向移動に合わせ、隣接判定は同じ z のチェビシェフ距離を使う。経路は `static.movement_cost` による合計コストが最小になるよう選ぶ。縦横・斜めとも移動先のコストを一回加算する。固定中のbracket-libのDijkstraには不均一コストへの制約が記載されているため、ゲーム側の優先度付きキューで重み付きDijkstraを実行する。対象から逆向きに探索し、候補の「一歩のコスト＋残りの最小コスト」で選択する。同点は既定の八方向の列挙順で決める。
-同じマスで固定Entityが重なる場合は描画layer、次にEntity IDの大きい順で採用する。固定Entityがなければコスト1。詳細は[固定Entityの仕様](entity_document/static_entity.md#移動コスト)を参照する。地形コストは移動時間を変えない。脚の切断による4/8ターンの遅延は別に適用する。
+八方向移動に合わせ、隣接判定は同じ z のチェビシェフ距離を使う。経路は `map.movement_cost` / `static.movement_cost` による合計コストが最小になるよう選ぶ。縦横・斜めとも移動先のコストを一回加算する。固定中のbracket-libのDijkstraには不均一コストへの制約が記載されているため、ゲーム側の優先度付きキューで重み付きDijkstraを実行する。対象から逆向きに探索し、候補の「一歩のコスト＋残りの最小コスト」で選択する。同点は既定の八方向の列挙順で決める。
+地面は一セル一つ。同じマスでmap/staticが重なる場合は描画layer、次にEntity IDの大きい順で採用する。固定Entityがなければコスト1。詳細は[固定Entityの仕様](entity_document/static_entity.md#移動コスト)を参照する。地形コストは移動時間を変えない。脚の切断による4/8ターンの遅延は別に適用する。
 プレイヤー・敵とも、隣接する縦横の片側または両側に壁があっても斜め移動・斜め近接攻撃を許可する。移動先そのものの壁・占有・マップ外判定は維持する。
 同距離の候補は個体 ID 順で決定する。射撃は距離だけでなく視線も確認する。
 敵対関係・視界・通行判定は Rust のルールを通す。Lua はその結果から戦術を選ぶ。
+
+`movable.hostile_factions`は敵対派閥の配列（省略可、最大32）。どちらか一方の定義が相手を敵対指定すると双方の敵検索へ反映する。従来のsurvivorとghoulの敵対関係も維持する。`lua_alerts=true`では警報位置への反応もLuaのon_turnで決める。省略時は既存のRust追跡を使う。
+
+`alert_allies`は同派閥かつ半径内の生存Actorへ目標位置と有効期限を設定する。半径1〜32・期間1〜100、目標の生存と視線を検査する。呼出間隔や警報中の動きはLuaで決定する。
 
 ### action と effects
 
 インタラクト用に `set_collision`、`set_glyph`、`message` を追加した。引数と制限は[インタラクト仕様](interactions.md)を参照する。
 
-- `action`：movable の Lua 制御 `on_turn` から一つだけ選ぶ。`wait`、`move`（`position`）、`attack`（`target`）、`reload` に対応する。`ctx:can_reload(actor_id)` で装填の可否を照会できる。
+- `action`：movable の Lua 制御 `on_turn` から一つだけ選ぶ。`wait`、`move`（`position`）、`attack`（`target`）、`reload`、`pickup`（`item`）、`equip_in_hand`（`item`・`grip`）、`alert_allies`（`target`・`radius`・`duration`）に対応する。`ctx:can_reload(actor_id)` で装填の可否を照会できる。
 - `effects`：全種類の hook から返せる効果の配列。初期案は `spawn`（`definition_id`, `position`, `quantity`）、`damage`（`target`, `amount`）、`heal`（同じ）、`consume_item`（`target`, `quantity`）。今回の具体定義用に以下も追加する案。
   - `weapon_attack`：`attacker`, `target`, `weapon`。使用者が所持し使用可能な手に装備する武器での攻撃要求。威力・射程・消費弾薬は武器設定から算出する。
   - `apply_bandage`：`target`, `body_part`。包帯のon_useから返し、使用者本人が所持する包帯で出血中・未処置の一部位へ処置を開始する。期間はsourceのitem.use.amountを使う。consume_itemと一つの効果列として返す。
@@ -206,7 +219,7 @@ weapon_attack でも弾薬消費と被害を一括適用する。対象不在・
 回復アイテムは使用者自身または隣接する生きた movable を対象とし、使用者の所持と残量を検証する。
 heal は全体の最大HPまで、restore_need は最大値までに丸める。部位の負傷段階は回復しない。
 `damage` / `heal` の `body_part` は廃止し、指定を拒否する。
-`spawn.quantity` は item のみ複数可。movable / static は 1 とする。
+`spawn.quantity` は item のみ複数可。movable / static は 1 とする。map分類はspawnできず、シナリオ読込時またはRustのset_map_entityで下地を設定する。
 未登録の定義、存在しない対象、不正な量、範囲外などは Rust が拒否する。
 使っただけで item が消費されることはなく、消耗品は `consume_item` を返す。
 
@@ -250,7 +263,7 @@ Lua 単体検査に加え、`cargo test` で Rust と Lua の接続を確認す�
 
 ### 武器のクリティカル設定
 
-装備可能な全武器（銃・クロスボウを含む）の `item.weapon.critical_value` は必須の整数2〜12。例：`critical_value = 10`。生物への貫通後の正の被害に対し2D6を振り、値以上なら未切断の六部位から一つを選び負傷を一段階進める。判定・部位抽選の乱数はRustで管理する。詳細は[戦闘ルール](../rule/combat.md#全体hp部位の負傷とクリティカル)を参照。
+装備可能な全武器（銃・クロスボウを含む）の `item.weapon.critical_value` は必須の整数3〜18。`critical_value = 15` なら、生物に貫通後の正のダメージを与え、3D6の合計が15以上のときに未切断の部位から一つを選び負傷を一段階進める。判定・部位抽選の乱数はRustで管理する。詳細は[戦闘ルール](../rule/combat.md#全体hp部位の負傷とクリティカル)を参照。
 
 movable定義は `hp = 60, body = { "head", "body", "left_arm", "right_arm", "left_leg", "right_leg" }` の形式に変更した。旧形式の部位HPのマップは受け付けない。
 
@@ -274,7 +287,7 @@ hands = "two",
 
 `two_hand_pv_bonus` は両対応の近接武器のみ0〜30、省略0。片手では加算しない。片手補正は両対応武器のみ設定でき、射程低下は0以上・基礎射程未満、命中低下は0〜100の整数、省略0。逆手のみでの使用は合計ダメージ3/4（端数切捨て）で、PV自体は逆手補正で下げない。
 
-参照スナップショットに `equipment = { right_hand, left_hand, active, dominant_hand }`、`movement_turns`（1/4/8）、`bleeding_damage`（部位ごとの毎ターン被害の合算）を追加した。空の手や使用可能な武器がないactiveはnull。両手持ちはright_handとleft_handが同じEntity IDになる。Luaの `ctx:can_attack` / `ctx:can_reload` にも欠損した手・実効射程・持ち方を反映する。武器攻撃には手への装備が必要。
+可動体の参照スナップショットは `equipment = { right_hand, left_hand, active, dominant_hand }`、`inventory_items`（所持品の個体ID配列）、`movement_turns`（1/4/8）、`bleeding_damage`（部位ごとの毎ターン被害の合算）を持つ。所持品の詳細は `ctx:entity(id)` で参照し、遠距離武器の装填数は `loaded_ammo` を使う。空の手や使用可能な武器がないactiveはnull。両手持ちはright_handとleft_handが同じEntity IDになる。Luaの `ctx:can_attack` / `ctx:can_reload` にも欠損した手・実効射程・持ち方を反映する。武器攻撃には手への装備が必要。
 
 部位の出血は1、大出血は2、切断は4を毎ターン末に合算し、全体HPから減らす。片脚切断は移動に4ターン、両脚切断は8ターン。切断した手に装備したアイテムは使用できない。回復薬・汎用状態除去は部位の負傷段階を治療しない。
 
@@ -286,7 +299,7 @@ hands = "two",
 
 参照用個体情報に `bleeding[部位名] = 毎ターン被害`、`bandages[部位名] = 処置完了予定の絶対ターン`、`stopped_bleeding = { 部位名, ... }` を追加した。bodyの負傷段階は止血完了後も保持する。包帯中のクリティカルで段階は進むが、完了予定は変えない。止血後のクリティカルでは保持した段階から進め、止血済みを解除する。切断状態は止血しても戻さない。
 
-処置中は継続出血し、100ターン目の出血計算後に止血する。巻いた包帯の表示は自動で消え、部位は止血済みとなる。包帯の装備や汎用bleedingステータスの除去には使わない。
+包帯を巻くと、その部位の `bleeding` は直ちに0となる。100ターン目に包帯が外れて部位は止血済みとなる。包帯の装備や汎用bleedingステータスの除去には使わない。
 
 ### 数字キー登録と防具
 
@@ -296,7 +309,9 @@ hands = "two",
 
 ### 宝箱の中身
 
-`item.contents = { { definition_id = "item.bread", quantity = 2 } }`で初期内容を設定する。生成時に個体へコピーし、スナップショットのcontentsに残数を保持する。containerタグのItemのon_interactで `open_container` 効果を返し、state.opened=trueとして中身選択画面を開く。複数選択・一括取得・容量検査・残数更新はRustで処理する。詳細と制限は[インタラクト仕様](interactions.md)を参照。
+`item.contents = { { definition_id = "item.bread", quantity = 2 } }`で固定の初期内容を設定する。抽選する箱は代わりに `item.loot` を指定する。`min_rolls`・`max_rolls` は異なる品目の数で、`tier_weights` の添字1〜10は対応するティアの抽選重み。`entries` には `definition_id` と任意の `min_quantity`・`max_quantity`（それぞれ省略時1）を指定する。
+
+抽選する箱は生成時にシナリオのシードと個体IDから結果を決める。各枠で候補が残っているティアを重み付きで選び、そのティアから品目と数量を抽選する。中身は個体の `contents` に保持する。containerタグのItemのon_interactで `open_container` 効果を返し、state.opened=trueとして中身選択画面を開く。複数選択・一括取得・容量検査・残数更新はRustで処理する。詳細と制限は[インタラクト仕様](interactions.md)を参照。
 
 ### entity_document の追加定義とAPI（2026-11-15）
 

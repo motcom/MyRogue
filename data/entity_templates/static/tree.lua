@@ -9,7 +9,7 @@ return {
         description = "枝葉を広げる木。破壊すると木材を得られる。",
         appearance = {
             glyph = "T",
-            fg = { 40, 130, 40 },
+            fg = { 100, 112, 75 },
             bg = { 0, 0, 0 },
             layer = 10,
         },
@@ -24,6 +24,8 @@ return {
     },
     initial_state = {},
     static = {
+        placement = "spawn",
+        destroyed_map = "terrain.field",
         movement_cost = 1.0,
         combat = { base_av = 2 },
         role = "obstacle",

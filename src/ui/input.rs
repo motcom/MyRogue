@@ -84,6 +84,9 @@ impl Game {
         } else if matches!(
             self.panel,
             Panel::InteractionDirection
+                | Panel::PickupMenu
+                | Panel::SmashDirection
+                | Panel::SmashMenu { .. }
                 | Panel::InteractionMenu { .. }
                 | Panel::OpenDirection
                 | Panel::OpenMenu { .. }
@@ -244,7 +247,7 @@ impl Game {
                 K::F => 'f',
                 K::R => 'r',
                 K::Semicolon => ';',
-                K::T => 't',
+                K::S => 's',
                 K::Period | K::Space => '.',
                 _ => return,
             };
@@ -267,6 +270,7 @@ impl Game {
                 },
                 "open_inventory" => Action::OpenInventory,
                 "interact" => Action::BeginInteract,
+                "smash" => Action::BeginSmash,
                 "open" => Action::BeginOpen,
                 "open_map" => Action::OpenMap,
                 "open_crafting" => Action::OpenCrafting,
@@ -283,38 +287,25 @@ impl Game {
             ';' => Action::OpenInspect,
             'e' => Action::BeginInteract,
             'o' => Action::BeginOpen,
+            's' => Action::BeginSmash,
             '.' => Action::WaitTurn,
             'g' => self.pickup_action(),
             'f' => self.shoot_action(),
             'r' => Action::Reload,
             'v' => Action::ToggleRunning,
-            't' => self
-                .entities
-                .iter()
-                .find(|(id, e)| {
-                    matches!(e,Entity::Static(s) if s.destructible)
-                        && e.map_position()
-                            .is_some_and(|p| p.distance(player.position) == 1)
-                        && self.can_attack(self.player_id, **id, None)
-                })
-                .map(|(target, _)| Action::Attack { target: *target })
-                .unwrap_or(Action::Message {
-                    message: "No attackable obstacle nearby".into(),
-                }),
             _ => Action::Message {
                 message: "Unknown key".into(),
             },
         }
     }
     fn pickup_action(&self) -> Action {
-        self.position(self.player_id)
-            .into_iter()
-            .flat_map(|p| self.at(p))
-            .find(|id| matches!(self.entities[id], Entity::Item(_)))
-            .map(|item| Action::Pickup { item })
-            .unwrap_or(Action::Message {
-                message: "No item here".into(),
-            })
+        match self.items_at_feet().as_slice() {
+            [] => Action::Message {
+                message: "足元に拾える物はありません".into(),
+            },
+            [item] => Action::Pickup { item: *item },
+            _ => Action::OpenPickupMenu,
+        }
     }
     fn shoot_action(&self) -> Action {
         let weapon = match self.targeting_weapon() {

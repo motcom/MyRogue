@@ -53,6 +53,11 @@ pub enum Panel {
         item: Id,
     },
     InteractionDirection,
+    PickupMenu,
+    SmashDirection,
+    SmashMenu {
+        position: Pos,
+    },
     OpenDirection,
     OpenMenu {
         position: Pos,
@@ -215,6 +220,8 @@ pub struct Game {
     pub turn: u64,
     pub(crate) respawn_count: u64,
     pub rng: Rng,
+    pub(crate) loot_seed: u64,
+    monster_drops: BTreeMap<u32, Vec<LootEntry>>,
     pub(crate) disease_rng: Rng,
     pub(crate) next_id: Id,
     pub events: VecDeque<Event>,
@@ -244,7 +251,7 @@ impl Game {
         Self::from_scenario(root, runtime, scenario, false)
     }
 
-    /// Debug entry point: Lua owns terrain aliases and defaults; JSON owns geometry.
+    /// Lua owns terrain aliases and spawn rules; JSON owns geometry.
     pub fn load_map_json(root: &Path, path: &str) -> Result<Self> {
         let runtime = Rc::new(LuaRuntime::load(root)?);
         let mut scenario = runtime.scenario_file("data/scenarios/debug_map_json.lua")?;
@@ -269,6 +276,7 @@ impl Game {
         generator.json = path.to_owned();
         // Alias tables may cover several debug maps. Keep only IDs used by this output.
         let image = map_gen::generate(&graph, scenario.seed, &generator.inputs)?;
+        crate::map_generation::validate_debug_output(&image, graph.output, path)?;
         if let Some(palette) = &image.terrain {
             generator
                 .ids
@@ -324,6 +332,8 @@ impl Game {
             turn: 0,
             respawn_count: 0,
             rng: Rng::new(scenario.seed),
+            loot_seed: scenario.seed ^ 0x4C4F_4F54,
+            monster_drops: runtime.monster_drops()?,
             disease_rng: Rng::new(scenario.seed ^ 0x434F_4C44),
             next_id: 1,
             events: VecDeque::new(),
@@ -345,8 +355,8 @@ impl Game {
             .get(&scenario.ground)
             .ok_or("ground definition missing")?;
         ensure(
-            ground.category == "static" && !ground.common.collision.movement,
-            "ground must be walkable static",
+            ground.category == "map" && !ground.common.collision.movement,
+            "ground must be walkable map_entity",
         )?;
         ensure(
             world
@@ -371,7 +381,7 @@ impl Game {
         for y in 0..world.map.height {
             for x in 0..world.map.width {
                 let p = Pos { x, y, z: 0 };
-                world.spawn(&scenario.ground, Some(p), None, 1)?;
+                world.set_map_entity(&scenario.ground, p)?;
                 if !scenario
                     .map_generator
                     .as_ref()
@@ -388,12 +398,7 @@ impl Game {
             .filter(|spawn| spawn.definition_id != scenario.ground)
             .chain(scenario.spawns)
         {
-            world.spawn(
-                &spawn.definition_id,
-                Some(spawn.position),
-                None,
-                spawn.quantity,
-            )?;
+            world.place_generated(&spawn)?;
         }
         if auto_spawn {
             let center = scenario.player.position;
@@ -403,6 +408,12 @@ impl Game {
                 .min_by_key(|p| (p.x - center.x).pow(2) + (p.y - center.y).pow(2))
                 .ok_or("JSONマップにプレイヤーが歩ける開始位置がありません")?;
             world.respawn_position = scenario.player.position;
+        }
+        if scenario
+            .populate_map
+            .unwrap_or(scenario.map_generator.is_some())
+        {
+            world.populate_map(scenario.seed, scenario.player.position)?;
         }
         ensure(
             world.can_enter(scenario.player.position, 0),
@@ -481,6 +492,7 @@ impl Game {
                         )?;
                     }
                     match self.entities.get_mut(&target).unwrap() {
+                        Entity::Map(_) => return Err("cannot change base terrain collision".into()),
                         Entity::Static(s) => {
                             s.blocks_movement = movement;
                             s.blocks_sight = sight;
@@ -607,7 +619,14 @@ impl Game {
             Action::MoveTo { position } => self.move_to(actor, position),
             Action::Attack { target } => self.attack(actor, target, None),
             Action::Reload => self.reload(actor).map(|_| ()),
-            _ => Err("Lua on_turn may only wait, move, attack or reload".into()),
+            Action::Pickup { item } => self.pickup(actor, item),
+            Action::EquipInHand { item, grip } => self.equip_in_hand(actor, item, grip),
+            Action::AlertAllies {
+                target,
+                radius,
+                duration,
+            } => self.alert_allies(actor, target, radius, duration),
+            _ => Err("unsupported Lua on_turn action".into()),
         }
     }
     pub fn advance_turn(&mut self) {
@@ -638,7 +657,13 @@ impl Game {
             {
                 continue;
             }
-            if self.respond_to_alert(id).unwrap_or(false) {
+            if !self
+                .definition(id)
+                .movable
+                .as_ref()
+                .is_some_and(|m| m.lua_alerts)
+                && self.respond_to_alert(id).unwrap_or(false)
+            {
                 continue;
             }
             if let Err(e) = self.hook(id, "on_turn", json!({"turn":self.turn})) {
@@ -659,6 +684,7 @@ impl Game {
             .iter()
             .flat_map(|(id, e)| {
                 let status = match e {
+                    Entity::Map(_) => return vec![],
                     Entity::Movable(e) => &e.status,
                     Entity::Static(e) => &e.status,
                     Entity::Item(e) => &e.status,
@@ -802,6 +828,20 @@ impl Game {
                 ));
             }
             if event.hook == "on_destroy" {
+                if let Err(error) = self.drop_monster_loot(event.target) {
+                    self.log(format!("戦利品: {error}"));
+                }
+                let replacement = self
+                    .entity_definitions
+                    .get(&self.entities[&event.target].script().definition_id)
+                    .and_then(|d| d.r#static.as_ref())
+                    .filter(|s| s.placement == StaticPlacement::Spawn)
+                    .and_then(|s| s.destroyed_map.clone());
+                if let (Some(base), Some(position)) = (replacement, self.position(event.target))
+                    && let Err(error) = self.set_map_entity(&base, position)
+                {
+                    self.log(format!("destroyed_map: {error}"));
+                }
                 self.remove(event.target);
             }
         }
@@ -851,6 +891,14 @@ impl Game {
         Ok(())
     }
     pub fn attack_static(&mut self, target: Id) -> Result<()> {
+        ensure(
+            matches!(self.entities.get(&target), Some(Entity::Static(entity)) if entity.destructible)
+                && self
+                    .position(self.player_id)
+                    .zip(self.position(target))
+                    .is_some_and(|(origin, position)| origin.distance(position) == 1),
+            "隣に攻撃できる固定物がありません",
+        )?;
         self.attack(self.player_id, target, None)?;
         self.events();
         self.advance_turn();

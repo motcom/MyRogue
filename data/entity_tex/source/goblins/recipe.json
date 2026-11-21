@@ -1,0 +1,27 @@
+{
+  "description": "Six dedicated goblin sprites generated with the built-in imagegen tool; direct nearest-neighbor import at 32x32 with Ash & Rust 32 colors and binary alpha. No explosives specialist.",
+  "tile_size": [
+    32,
+    32
+  ],
+  "tiles": {
+    "monster.goblin_scavenger": {
+      "source": "source/goblins/scavenger.png"
+    },
+    "monster.goblin_scrap_guard": {
+      "source": "source/goblins/scrap_guard.png"
+    },
+    "monster.goblin_spearman": {
+      "source": "source/goblins/spearman.png"
+    },
+    "monster.goblin_crossbowman": {
+      "source": "source/goblins/crossbowman.png"
+    },
+    "monster.goblin_caller": {
+      "source": "source/goblins/caller.png"
+    },
+    "monster.goblin_chief": {
+      "source": "source/goblins/chief.png"
+    }
+  }
+}

@@ -14,6 +14,9 @@ impl Rng {
 pub fn modifier(attribute: u32) -> i32 {
     (i64::from(attribute) - 8).div_euclid(2) as i32
 }
+pub(crate) fn interception_chance(dexterity: u32) -> u32 {
+    (20 - 2 * (i64::from(dexterity) - 8)).clamp(5, 35) as u32
+}
 #[derive(Debug, PartialEq)]
 pub struct Outcome {
     pub hit: bool,
@@ -69,6 +72,20 @@ pub fn resolve(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn projectile_interception_chance_follows_dexterity_with_bounds() {
+        for (dexterity, percent) in [
+            (0, 35),
+            (1, 34),
+            (4, 28),
+            (8, 20),
+            (12, 12),
+            (16, 5),
+            (100, 5),
+        ] {
+            assert_eq!(interception_chance(dexterity), percent);
+        }
+    }
     #[test]
     fn impossible_armor_and_bounded_penetrations() {
         let die = Dice {

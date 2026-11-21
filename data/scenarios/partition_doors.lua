@@ -1,5 +1,6 @@
 -- このJSONをMap Genで再編集すると、次回のゲーム起動にも反映される。
 return {
+    populate_map = false,
     width = 32, height = 32, seed = 42,
     ground = "terrain.field", boundary = "obstacle.stone_wall",
     map_generator = {

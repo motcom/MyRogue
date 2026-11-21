@@ -17,8 +17,12 @@ mod game_over;
 mod input;
 mod render;
 
-use crate::game::Game;
+use crate::{game::Game, model::config::Nutrition};
 use bracket_lib::prelude as bl;
+
+fn displayed_nutrition(nutrition: &Nutrition) -> [u32; 3] {
+    [nutrition.protein, nutrition.carbohydrate, nutrition.vitamin].map(|value| value.ceil() as u32)
+}
 
 impl bl::GameState for Game {
     fn tick(&mut self, ctx: &mut bl::BTerm) {

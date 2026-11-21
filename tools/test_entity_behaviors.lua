@@ -57,6 +57,7 @@ check(player.movable.controls.f.type == "shoot", "wrong shoot key")
 check(player.movable.controls.r.type == "reload", "wrong reload key")
 check(player.movable.controls.g.type == "pickup", "wrong pickup key")
 check(player.movable.controls.o.type == "open", "wrong open key")
+check(player.movable.controls.s.type == "smash", "wrong smash key")
 check(player.movable.controls[";"].type == "open_inspect", "wrong inspect key")
 for _, definition in pairs(definitions) do
     check(type(definition.common.description) == "string" and #definition.common.description > 0, "missing description")

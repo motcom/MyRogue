@@ -2,6 +2,19 @@
 use crate::model::{config::*, map::Map};
 use std::{collections::BTreeMap, path::Path};
 
+pub(crate) fn validate_debug_output(
+    image: &map_gen::graph::Image,
+    output: map_gen::graph::NodeId,
+    path: &str,
+) -> Result<()> {
+    ensure(
+        image.terrain.is_some(),
+        format!(
+            "選択したJSONの最終出力（ノード #{output}）に地形IDがありません。Map GenでTerrain Palette / Terrain MergeにつながるOutputノードを選び、「このノードを最終出力にする」で設定して保存してください: {path}"
+        ),
+    )
+}
+
 pub(crate) fn terrain_spawns(
     root: &Path,
     config: &MapGenerator,
@@ -40,8 +53,10 @@ pub(crate) fn terrain_spawns(
         for band in &palette.bands {
             let id = config.ids.get(&band.id).unwrap_or(&band.id);
             ensure(
-                definitions.get(id).is_some_and(|d| d.category == "static"),
-                format!("unknown or non-static terrain ID: {id}"),
+                definitions
+                    .get(id)
+                    .is_some_and(|d| matches!(d.category.as_str(), "map" | "static")),
+                format!("unknown or non-map/static terrain ID: {id}"),
             )?;
         }
     } else {
@@ -62,9 +77,9 @@ pub(crate) fn terrain_spawns(
             ensure(
                 definitions
                     .get(&band.definition_id)
-                    .is_some_and(|d| d.category == "static"),
+                    .is_some_and(|d| matches!(d.category.as_str(), "map" | "static")),
                 format!(
-                    "map terrain must reference a static definition: {}",
+                    "map terrain must reference a map/static definition: {}",
                     band.definition_id
                 ),
             )?;
@@ -106,36 +121,353 @@ pub(crate) fn terrain_spawns(
     Ok(spawns)
 }
 
+/// Initial population only: independent coordinate hashes keep combat RNG untouched.
+impl crate::game::Game {
+    pub(crate) fn populate_map(&mut self, seed: u64, player: Pos) -> Result<()> {
+        use crate::model::entity::Entity;
+        let bases: Vec<_> = self
+            .entities
+            .values()
+            .filter_map(|e| {
+                if let Entity::Map(base) = e {
+                    Some((base.position, base.script.definition_id.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        for (position, definition_id) in bases {
+            if position.distance(player) <= 2 || !self.can_enter(position, 0) {
+                continue;
+            }
+            // Explicit map-gen/scenario objects reserve their cells, including furniture.
+            if self
+                .at(position)
+                .iter()
+                .any(|id| !matches!(self.entities[id], Entity::Map(_)))
+            {
+                continue;
+            }
+            let rules = self.entity_definitions[&definition_id]
+                .map
+                .as_ref()
+                .unwrap()
+                .spawns
+                .clone();
+            for (index, rule) in rules.iter().enumerate() {
+                let key = format!(
+                    "{definition_id}:{}:{}:{}:{index}",
+                    position.x, position.y, position.z
+                );
+                let raw = map_gen::recipe::derive_seed(seed ^ 0x504F_5055, &key);
+                let unit = (raw >> 11) as f64 / (1u64 << 53) as f64;
+                if unit < rule.chance {
+                    self.spawn(&rule.definition_id, Some(position), None, rule.quantity)?;
+                    if let Some(item_id) = &rule.with_item {
+                        self.spawn(item_id, Some(position), None, 1)?;
+                    }
+                    break;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{game::Game, scripting::LuaRuntime};
 
     #[test]
+    fn map_bases_replace_each_other_without_spawning_or_disturbing_objects() {
+        use crate::model::entity::Entity;
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut game = Game::load(root).unwrap();
+        let p = game.position(game.player_id).unwrap();
+        let old = game
+            .at(p)
+            .into_iter()
+            .find(|id| matches!(game.entities[id], Entity::Map(_)))
+            .unwrap();
+        let chair = game.spawn("obstacle.chair", Some(p), None, 1).unwrap();
+        game.events();
+        let road = game.set_map_entity("terrain.road", p).unwrap();
+        assert!(!game.entities.contains_key(&old));
+        assert!(game.at(p).contains(&chair));
+        assert!(game.at(p).contains(&game.player_id));
+        assert_eq!(
+            game.at(p)
+                .iter()
+                .filter(|id| matches!(game.entities[id], Entity::Map(_)))
+                .count(),
+            1
+        );
+        assert_eq!(game.entity_snapshot(road).unwrap()["category"], "map");
+        assert!(game.spawn("terrain.field", Some(p), None, 1).is_err());
+        assert!(game.set_map_entity("obstacle.tree", p).is_err());
+        game.set_map_entity("terrain.pond", p).unwrap();
+        assert!(!game.can_enter(p, game.player_id));
+        game.set_map_entity("terrain.field", p).unwrap();
+        game.remove(chair);
+        assert_eq!(game.movement_cost(p), Some(2.0));
+    }
+
+    #[test]
+    fn population_uses_lua_rules_reserves_explicit_cells_and_preserves_combat_rng() {
+        use crate::model::entity::Entity;
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut game = Game::load(root).unwrap();
+        let player = game.position(game.player_id).unwrap();
+        let removed: Vec<_> = game
+            .entities
+            .iter()
+            .filter_map(|(id, e)| {
+                (*id != game.player_id && !matches!(e, Entity::Map(_))).then_some(*id)
+            })
+            .collect();
+        for id in removed {
+            game.remove(id);
+        }
+        for y in 0..game.map.height {
+            for x in 0..game.map.width {
+                game.set_map_entity("terrain.field", Pos { x, y, z: 0 })
+                    .unwrap();
+            }
+        }
+        let map = std::sync::Arc::make_mut(&mut game.entity_definitions)
+            .get_mut("terrain.field")
+            .unwrap()
+            .map
+            .as_mut()
+            .unwrap();
+        let mut chief_rule = map
+            .spawns
+            .iter()
+            .find(|rule| rule.definition_id == "monster.goblin_chief")
+            .unwrap()
+            .clone();
+        chief_rule.chance = 1.0;
+        map.spawns = vec![chief_rule];
+        let chair_pos = Pos { x: 20, y: 20, z: 0 };
+        let chair = game
+            .spawn("obstacle.chair", Some(chair_pos), None, 1)
+            .unwrap();
+        let road = chair_pos.offset(1, 0);
+        game.set_map_entity("terrain.road", road).unwrap();
+        let mut expected_rng = game.rng.clone();
+        let mut same = game.clone();
+        game.populate_map(42, player).unwrap();
+        same.populate_map(42, player).unwrap();
+        let positions = |g: &Game, definition_id: &str| {
+            g.entities
+                .values()
+                .filter(|e| e.script().definition_id == definition_id)
+                .map(|e| e.map_position().unwrap())
+                .collect::<Vec<_>>()
+        };
+        let chiefs = positions(&game, "monster.goblin_chief");
+        assert_eq!(chiefs, positions(&same, "monster.goblin_chief"));
+        assert_eq!(chiefs, positions(&game, "item.treasure_chest"));
+        assert!(!chiefs.is_empty());
+        assert!(
+            chiefs
+                .iter()
+                .all(|p| p.distance(player) > 2 && *p != chair_pos && *p != road)
+        );
+        assert!(game.entities.contains_key(&chair));
+        assert_eq!(game.rng.roll(1000), expected_rng.roll(1000));
+    }
+
+    #[test]
+    fn spawned_destructibles_restore_the_declared_map_base_once() {
+        use crate::model::entity::Entity;
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut game = Game::load(root).unwrap();
+        let p = Pos { x: 10, y: 20, z: 0 };
+        for (definition, expected) in [
+            ("obstacle.tree", "terrain.field"),
+            ("obstacle.conifer", "terrain.wasteland"),
+        ] {
+            game.set_map_entity("terrain.road", p).unwrap();
+            let tree = game.spawn(definition, Some(p), None, 1).unwrap();
+            game.damage(game.player_id, tree, 9999).unwrap();
+            game.events();
+            assert!(!game.entities.contains_key(&tree));
+            let bases: Vec<_> = game
+                .at(p)
+                .into_iter()
+                .filter(|id| matches!(game.entities[id], Entity::Map(_)))
+                .collect();
+            assert_eq!(bases.len(), 1);
+            assert_eq!(game.definition(bases[0]).id, expected);
+            assert!(
+                game.at(p)
+                    .iter()
+                    .any(|id| game.definition(*id).id == "item.wood")
+            );
+            game.events();
+            assert_eq!(
+                game.at(p)
+                    .iter()
+                    .filter(|id| matches!(game.entities[id], Entity::Map(_)))
+                    .count(),
+                1
+            );
+        }
+        game.set_map_entity("terrain.road", p).unwrap();
+        let wall = game
+            .spawn("obstacle.wooden_wall", Some(p), None, 1)
+            .unwrap();
+        game.damage(game.player_id, wall, 9999).unwrap();
+        game.events();
+        assert!(
+            game.at(p)
+                .iter()
+                .any(|id| game.definition(*id).id == "terrain.road")
+        );
+    }
+
+    #[test]
+    fn forest_house_scenario_generates_structures_and_populates_fields() {
+        use crate::model::entity::Entity;
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut game = Game::load_scenario(root, "data/scenarios/forest_houses.lua").unwrap();
+        let player = game.position(game.player_id).unwrap();
+        assert!(game.can_enter(player, game.player_id));
+        let ids: std::collections::BTreeSet<_> = game
+            .entities
+            .values()
+            .map(|e| e.script().definition_id.as_str())
+            .collect();
+        for id in [
+            "obstacle.tree",
+            "obstacle.conifer",
+            "obstacle.wooden_wall",
+            "obstacle.wooden_door",
+            "obstacle.table",
+            "obstacle.chair",
+        ] {
+            assert!(ids.contains(id), "missing {id}");
+        }
+        let goblins: Vec<_> = game
+            .entities
+            .iter()
+            .filter(|(_, entity)| entity.script().definition_id.starts_with("monster.goblin_"))
+            .map(|(id, _)| game.position(*id).unwrap())
+            .collect();
+        assert!(!goblins.is_empty());
+        for position in goblins {
+            assert!(position.distance(player) > 2);
+            assert!(
+                game.at(position)
+                    .iter()
+                    .any(|id| game.definition(*id).id == "terrain.field")
+            );
+        }
+        for y in 0..64 {
+            for x in 0..64 {
+                let at = game.at(Pos { x, y, z: 0 });
+                assert_eq!(
+                    at.iter()
+                        .filter(|id| matches!(game.entities[id], Entity::Map(_)))
+                        .count(),
+                    1
+                );
+                assert!(
+                    at.iter()
+                        .filter(|id| game.entities[id].blocks_movement())
+                        .count()
+                        <= 1
+                );
+            }
+        }
+        let first_new_id = game.next_id;
+        for _ in 0..10 {
+            game.advance_turn();
+        }
+        // Ammunition and loot can change during combat. Terrain and monsters populate only at load.
+        assert!(
+            game.entities
+                .range(first_new_id..)
+                .all(|(_, entity)| matches!(entity, Entity::Item(_)))
+        );
+    }
+
+    #[test]
+    fn cave_json_uses_merged_terrain_and_spawns_goblins_on_fields() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let path = "data/map_json/doukutu.json";
+        let graph = map_gen::load(&root.join(path)).unwrap();
+        let image = map_gen::generate(&graph, 42, &BTreeMap::new()).unwrap();
+        let palette = image.terrain.as_ref().unwrap();
+        assert!(
+            palette
+                .bands
+                .iter()
+                .any(|band| band.id == "obstacle.conifer")
+        );
+        let game = Game::load_map_json(root, path).unwrap();
+        assert_eq!((game.map.width, game.map.height), (64, 64));
+        let player = game.position(game.player_id).unwrap();
+        assert!(game.can_enter(player, game.player_id));
+        let goblins: Vec<_> = game
+            .entities
+            .values()
+            .filter(|entity| entity.script().definition_id.starts_with("monster.goblin_"))
+            .collect();
+        assert!(!goblins.is_empty());
+        for entity in goblins {
+            let position = entity.map_position().unwrap();
+            assert!(position.distance(player) > 2);
+            assert!(
+                game.at(position)
+                    .iter()
+                    .any(|id| game.definition(*id).id == "terrain.field")
+            );
+        }
+    }
+
+    #[test]
+    fn debug_json_without_terrain_reports_output_setting() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let error = Game::load_map_json(root, "tool/map_gen/examples/recipe_inputs.json")
+            .err()
+            .expect("numeric output must be rejected")
+            .to_string();
+        assert!(error.contains("最終出力"), "{error}");
+        assert!(error.contains("このノードを最終出力にする"), "{error}");
+    }
+
+    #[test]
     fn debug_json_preserves_full_resolution_terrain_and_finds_safe_spawn() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR"));
         let path = "data/map_json/shape_tiles.json";
         let game = Game::load_map_json(root, path).unwrap();
-        assert_eq!((game.map.width, game.map.height), (256, 256));
         let graph = map_gen::load(&root.join(path)).unwrap();
+        let size = graph.resolution as i32;
+        assert_eq!((game.map.width, game.map.height), (size, size));
         let image = map_gen::generate(&graph, 42, &BTreeMap::new()).unwrap();
         let palette = image.terrain.as_ref().unwrap();
-        for y in 1..255 {
-            for x in 1..255 {
-                let p = Pos { x, y, z: 0 };
-                let floor = palette.band(image.pixels[(y * 256 + x) as usize]).id == "stone_floor";
-                assert_eq!(game.can_enter(p, game.player_id), floor, "{x},{y}");
-            }
-        }
         let player = game.position(game.player_id).unwrap();
         assert!(game.can_enter(player, game.player_id));
-        let distance = |p: Pos| (p.x - 128).pow(2) + (p.y - 128).pow(2);
-        assert!((1..255).all(|y| (1..255).all(|x| {
-            let p = Pos { x, y, z: 0 };
-            !game.can_enter(p, game.player_id) || distance(p) >= distance(player)
-        })));
+        let distance = |p: Pos| (p.x - size / 2).pow(2) + (p.y - size / 2).pow(2);
+        for y in 1..size - 1 {
+            for x in 1..size - 1 {
+                let p = Pos { x, y, z: 0 };
+                let floor = palette.band(image.pixels[(y * size + x) as usize]).id == "stone_floor";
+                let wall = game
+                    .at(p)
+                    .iter()
+                    .any(|id| game.definition(*id).id == "obstacle.stone_wall");
+                assert_eq!(!wall, floor, "{x},{y}");
+                if floor {
+                    assert!(distance(p) >= distance(player));
+                }
+            }
+        }
         let camera = game.map_camera();
-        assert_eq!((camera.columns, camera.rows), (70, 38));
+        assert_eq!((camera.columns, camera.rows), (size.min(70), size.min(38)));
         assert!(player.x >= camera.origin.x && player.x < camera.origin.x + camera.columns);
         assert!(player.y >= camera.origin.y && player.y < camera.origin.y + camera.rows);
         assert!(game.map_draw_position(player).is_some());

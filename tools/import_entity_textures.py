@@ -2,8 +2,7 @@
 """Import the original atlas and dedicated sources; validate palette and alpha.
 
 Usage: python3 tools/import_entity_textures.py [source/atlas32.png]
-       [--only-simple | --only-crafting | --only-effects | --validate-only]
-Python only orchestrates ImageMagick and writes metadata; image operations use magick.
+       [--only-simple | --only-recolor | --only-crafting | --only-goblins | --only-effects | --validate-only]
 """
 import argparse
 import json
@@ -16,8 +15,14 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data/entity_tex"
 
 
-def magick(*args):
-    return subprocess.check_output(["magick", *map(str, args)])
+def magick(*args, input_data=None):
+    return subprocess.check_output(["magick", *map(str, args)], input=input_data)
+
+
+def luma(rgb):
+    # BT.709 luma on sRGB bytes, scaled to 0–2,550,000.
+    r, g, b = rgb
+    return 2126 * r + 7152 * g + 722 * b
 
 
 def import_effects(options, allowed, palette):
@@ -43,7 +48,7 @@ def import_effects(options, allowed, palette):
                 x, y = round(col * width / cols), round(row * height / rows)
                 w = round((col + 1) * width / cols) - x
                 h = round((row + 1) * height / rows) - y
-                if not options.validate_only and not options.only_simple and not options.only_crafting:
+                if not options.validate_only and (options.only_effects or not options.subset):
                     magick(source, "-crop", f"{w}x{h}+{x}+{y}", "+repage", "-sample", "32x32!",
                            "-channel", "A", "-threshold", "50%", "+channel",
                            "(", "+clone", "-alpha", "extract", "-write", "mpr:mask", "+delete", ")",
@@ -71,17 +76,24 @@ def main():
     parser.add_argument("source", nargs="?", default=str(OUT / "source/atlas32.png"))
     parser.add_argument("--only-effects", action="store_true", help="Import throw/burst frames; preserve all Entity PNGs")
     parser.add_argument("--only-crafting", action="store_true", help="Import dedicated crafting sprites; preserve the original 64 PNGs")
+    parser.add_argument("--only-goblins", action="store_true", help="Import six dedicated goblin sprites; preserve other Entity PNGs")
     parser.add_argument("--only-simple", action="store_true", help="Update only the six simple terrain tiles; preserve other PNGs")
+    parser.add_argument("--only-recolor", action="store_true", help="Rebuild only sprites listed in the palette recolor recipe")
     parser.add_argument("--validate-only", action="store_true", help="Preserve sprites; validate and rebuild manifest/index/previews")
+    subsets = ("only_simple", "only_recolor", "only_crafting", "only_goblins", "only_effects")
     options = parser.parse_args()
-    assert sum([options.only_simple, options.only_crafting, options.only_effects]) <= 1, "Choose one import subset"
+    assert sum(getattr(options, subset) for subset in subsets) <= 1, "Choose one import subset"
+    options.subset = any(getattr(options, subset) for subset in subsets)
     source = Path(options.source).resolve()
     recipe_path = OUT / "source/simple_terrain/recipe.json"
     overrides = {t["id"]: t for t in json.loads(recipe_path.read_text())["tiles"]} if recipe_path.exists() else {}
     assert not options.only_simple or overrides, "Simple terrain recipe is missing"
     palette = json.loads((ROOT / "document/color_thema/palette.json").read_text())
     colors = {c["id"]: c["hex"] for c in palette["colors"]}
-    allowed = {tuple(c["rgb"]) for c in palette["colors"]}
+    rgb_by_id = {c["id"]: tuple(c["rgb"]) for c in palette["colors"]}
+    allowed = set(rgb_by_id.values())
+    recolor_path = OUT / "source/palette_recolors.json"
+    recolors = json.loads(recolor_path.read_text())
     assert len(colors) == len(allowed) == 32, "Expected 32 unique palette colors"
     gpl = (ROOT / "document/color_thema/palette.gpl").read_text()
     gpl_colors = [(tuple(map(int, m[:3])), m[3]) for m in re.findall(
@@ -92,6 +104,11 @@ def main():
     aliases = json.loads(aliases_path.read_text()) if aliases_path.exists() else {}
     dedicated_path = OUT / "source/crafting/recipe.json"
     dedicated = json.loads(dedicated_path.read_text())["tiles"] if dedicated_path.exists() else {}
+    crafting_ids = set(dedicated)
+    goblin_path = OUT / "source/goblins/recipe.json"
+    goblins = json.loads(goblin_path.read_text())["tiles"] if goblin_path.exists() else {}
+    assert not (set(dedicated) & set(goblins)), "Dedicated source groups overlap"
+    dedicated.update(goblins)
     assert not (set(aliases) & set(dedicated)), "Alias/dedicated mappings overlap"
     layout = json.loads((OUT / "source/atlas32-layout.json").read_text())["cells"]
     assert len(layout) == 64, "Original atlas cell mapping must remain stable"
@@ -111,7 +128,8 @@ def main():
             entity_id = re.search(r'\bid = "([^"]+)"', text)[1]
             category = re.search(r'\bcategory = "([^"]+)"', text)[1]
             name = re.search(r'\bname = "([^"]+)"', text)[1]
-            target = OUT / category / f"{entity_id}.png"
+            recolor = recolors.get(entity_id, {})
+            target = OUT / ("static" if category == "map" else category) / f"{entity_id}.png"
             if entity_id in aliases:
                 target = OUT / category / f"{aliases[entity_id]}.png"
             assert entity_id in layout or entity_id in aliases or entity_id in dedicated, entity_id
@@ -120,7 +138,9 @@ def main():
             x, y = round(source_x * width / 8), round(source_y * height / 8)
             w, h = round((source_x + 1) * width / 8)-x, round((source_y + 1) * height / 8)-y
             selected = (not options.only_effects and (not options.only_simple or entity_id in overrides)
-                        and (not options.only_crafting or entity_id in dedicated))
+                        and (not options.only_recolor or entity_id in recolors)
+                        and (not options.only_crafting or entity_id in crafting_ids)
+                        and (not options.only_goblins or entity_id in goblins))
             if not options.validate_only and entity_id not in aliases and selected:
                 tile_source, crop, tile_swatches = source, f"{w}x{h}+{x}+{y}", swatches
                 if entity_id in dedicated:
@@ -148,21 +168,41 @@ def main():
                 # remap also quantizes alpha; save and restore the binary mask explicitly.
                 args += ["(", "+clone", "-alpha", "extract", "-write", "mpr:mask", "+delete", ")",
                          "-alpha", "off", "+dither", "-remap", tile_swatches, "mpr:mask", "-alpha", "off",
-                         "-compose", "CopyOpacity", "-composite", "-depth", "8", f"PNG32:{target}"]
-                magick(*args)
+                         "-compose", "CopyOpacity", "-composite", "-depth", "8"]
+                if recolor:
+                    source_pixels = magick(*args, "rgba:-")
+                    substitutions = {bytes(rgb_by_id[old]): bytes(rgb_by_id[new])
+                                     for old, new in recolor.items()}
+                    recolored = bytearray(source_pixels)
+                    for offset in range(0, len(source_pixels), 4):
+                        if source_pixels[offset + 3]:
+                            rgb = source_pixels[offset:offset + 3]
+                            recolored[offset:offset + 3] = substitutions.get(rgb, rgb)
+                    magick("-size", "32x32", "-depth", "8", "rgba:-", f"PNG32:{target}", input_data=recolored)
+                else:
+                    magick(*args, f"PNG32:{target}")
             assert magick("identify", "-format", "%w %h", target).decode() == "32 32", entity_id
             pixels = magick(target, "-depth", "8", "rgba:-")
             assert len(pixels) == 32 * 32 * 4
             rgba = list(zip(*[iter(pixels)] * 4))
             assert all(a in (0, 255) for *_, a in rgba), entity_id
-            assert all((r, g, b) in allowed for r, g, b, a in rgba if a), entity_id
+            visible_colors = {p[:3] for p in rgba if p[3]}
+            assert visible_colors <= allowed, entity_id
+            if category == "map":
+                assert all(luma(rgb) > 153 * 10000 for rgb in visible_colors), f"Map luma must exceed 60%: {entity_id}"
+            if category == "static":
+                collision = re.search(r"\bcollision\s*=\s*\{([^}]*)\}", text)
+                if collision and all(re.search(rf"\b{key}\s*=\s*true\b", collision[1])
+                                     for key in ("movement", "sight")):
+                    assert all(luma(rgb) < 1275000 for rgb in visible_colors), f"Blocking static luma must be below 50%: {entity_id}"
             if entity_id in overrides:
                 spec = overrides[entity_id]
-                base = next(tuple(c["rgb"]) for c in palette["colors"] if c["id"] == spec["base"])
+                base = rgb_by_id[recolor.get(spec["base"], spec["base"])]
                 details = sum((r, g, b) != base for r, g, b, a in rgba)
                 assert len({p[:3] for p in rgba}) <= 3, entity_id
                 keys = spec.get("palette_ids", [spec["base"], spec["accent"]])
-                tile_colors = {tuple(c["rgb"]) for c in palette["colors"] if c["id"] in keys}
+                palette_ids = [recolor.get(key, key) for key in keys]
+                tile_colors = {rgb_by_id[key] for key in palette_ids}
                 assert {p[:3] for p in rgba} <= tile_colors, entity_id
                 assert details <= spec.get("max_detail_pixels", 102), f"Too much terrain detail: {entity_id}: {details}/1024"
                 print(f"{entity_id}: {details}/1024 detail pixels")
@@ -185,15 +225,14 @@ def main():
                 entries[-1]["dedicated_texture"] = False
             if entity_id in overrides:
                 entries[-1]["source_override"] = "source/simple_terrain/" + overrides[entity_id]["source"]
-                spec = overrides[entity_id]
-                entries[-1]["palette_ids"] = spec.get("palette_ids", [spec["base"], spec["accent"]])
+                entries[-1]["palette_ids"] = palette_ids
         atlas = OUT / "atlas.png"
         magick("montage", *[OUT / e["file"] for e in entries], "-tile", "8x", "-geometry", "32x32+0+0",
                "-background", "none", f"PNG32:{atlas}")
         magick(atlas, "-filter", "point", "-resize", "400%", OUT / "preview.png")
         if dedicated:
             crafting_contact = OUT / "source/crafting/contact32.png"
-            magick("montage", *[OUT / e["file"] for e in entries if e["id"] in dedicated],
+            magick("montage", *[OUT / e["file"] for e in entries if e["id"] in crafting_ids],
                    "-tile", "7x", "-geometry", "32x32+2+2", "-background", "#1a2023", crafting_contact)
             magick(crafting_contact, "-filter", "point", "-resize", "800%", OUT / "crafting_preview.png")
         terrain_preview = Path(tmp) / "terrain-preview.png"
@@ -218,9 +257,14 @@ def main():
         magick(composite_atlas, "-filter", "point", "-resize", "400%", OUT / "composite_preview.png")
         if dedicated:
             crafting_composite = Path(tmp) / "crafting-composite.png"
-            magick("montage", *[p for e, p in zip(entries, composites) if e["id"] in dedicated],
+            magick("montage", *[p for e, p in zip(entries, composites) if e["id"] in crafting_ids],
                    "-tile", "7x", "-geometry", "32x32+2+2", "-background", "#1a2023", crafting_composite)
             magick(crafting_composite, "-filter", "point", "-resize", "800%", OUT / "crafting_composite_preview.png")
+    if goblins:
+        contact = OUT / "source/goblins/contact32.png"
+        magick("montage", *[OUT / e["file"] for e in entries if e["id"] in goblins],
+               "-tile", "6x", "-geometry", "32x32+2+2", "-background", "#1a2023", contact)
+        magick(contact, "-filter", "point", "-resize", "800%", OUT / "goblins_preview.png")
     effects = import_effects(options, allowed, palette)
     metadata = dict(tile_size=[32, 32], palette="../../document/color_thema/palette.json",
                     atlas="atlas.png", atlas_columns=8, entries=entries, effects=effects)

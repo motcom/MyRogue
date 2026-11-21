@@ -9,7 +9,7 @@ return {
         description = "石でできた壁。移動と視線を遮る。",
         appearance = {
             glyph = "#",
-            fg = { 150, 150, 150 },
+            fg = { 113, 128, 128 },
             bg = { 0, 0, 0 },
             layer = 10,
         },
@@ -24,6 +24,7 @@ return {
     },
     initial_state = {},
     static = {
+        placement = "map_gen",
         movement_cost = 1.0,
         combat = { base_av = 5 },
         role = "obstacle",

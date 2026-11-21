@@ -16,6 +16,48 @@ pub(crate) struct InteractionChoice {
 }
 
 impl Game {
+    fn smash_targets(&self, position: Pos) -> Vec<Id> {
+        self.at(position)
+            .into_iter()
+            .filter(|id| matches!(&self.entities[id], Entity::Static(entity) if entity.destructible && entity.taikyudo > 0))
+            .collect()
+    }
+
+    pub(crate) fn choose_smash_direction(&mut self, dx: i32, dy: i32) -> Result<Option<Id>> {
+        ensure(
+            matches!(self.panel, Panel::SmashDirection),
+            "先に方向を選択してください",
+        )?;
+        ensure(
+            (-1..=1).contains(&dx) && (-1..=1).contains(&dy) && (dx, dy) != (0, 0),
+            "invalid attack direction",
+        )?;
+        let position = self
+            .position(self.player_id)
+            .ok_or("player missing")?
+            .offset(dx, dy);
+        match self.smash_targets(position).as_slice() {
+            [] => {
+                self.log("その方向に攻撃できる固定物がありません");
+                Ok(None)
+            }
+            [target] => Ok(Some(*target)),
+            _ => {
+                self.panel = Panel::SmashMenu { position };
+                self.selection = 0;
+                Ok(None)
+            }
+        }
+    }
+
+    pub(crate) fn items_at_feet(&self) -> Vec<Id> {
+        self.position(self.player_id)
+            .into_iter()
+            .flat_map(|position| self.at(position))
+            .filter(|id| matches!(self.entities[id], Entity::Item(_)))
+            .collect()
+    }
+
     /// Only ground entities exposing a currently available Lua `open` action.
     pub(crate) fn nearby_open_targets(&self) -> Vec<Id> {
         self.entities
@@ -158,6 +200,33 @@ impl Game {
 
     pub(crate) fn interaction_choices(&self) -> Vec<InteractionChoice> {
         let (position, carried, open_only) = match self.panel {
+            Panel::SmashMenu { position } => {
+                return self
+                    .smash_targets(position)
+                    .into_iter()
+                    .map(|target| InteractionChoice {
+                        target_name: format!("{} #{}", self.definition(target).common.name, target),
+                        name: "攻撃".into(),
+                        action: Action::Attack { target },
+                    })
+                    .collect();
+            }
+            Panel::PickupMenu => {
+                return self
+                    .items_at_feet()
+                    .into_iter()
+                    .map(|item| {
+                        let Entity::Item(entity) = &self.entities[&item] else {
+                            unreachable!()
+                        };
+                        InteractionChoice {
+                            target_name: self.display_name(item),
+                            name: format!("拾う x{}", entity.quantity),
+                            action: Action::Pickup { item },
+                        }
+                    })
+                    .collect();
+            }
             Panel::InteractionMenu { position, carried } => (position, carried, false),
             Panel::OpenMenu { position } => (position, None, true),
             _ => return vec![],
@@ -201,7 +270,7 @@ impl Game {
     pub(crate) fn interaction_key_action(&self, key: bl::VirtualKeyCode) -> Option<Action> {
         use bl::VirtualKeyCode as K;
         match self.panel {
-            Panel::InteractionDirection | Panel::OpenDirection => {
+            Panel::InteractionDirection | Panel::OpenDirection | Panel::SmashDirection => {
                 let (dx, dy) = match key {
                     K::H | K::Left => (-1, 0),
                     K::J | K::Down => (0, 1),
@@ -214,13 +283,17 @@ impl Game {
                     K::Period | K::Space => (0, 0),
                     _ => return None,
                 };
-                Some(if matches!(self.panel, Panel::OpenDirection) {
-                    Action::OpenDirection { dx, dy }
-                } else {
-                    Action::InteractDirection { dx, dy }
+                Some(match self.panel {
+                    Panel::OpenDirection => Action::OpenDirection { dx, dy },
+                    Panel::SmashDirection if (dx, dy) == (0, 0) => return None,
+                    Panel::SmashDirection => Action::SmashDirection { dx, dy },
+                    _ => Action::InteractDirection { dx, dy },
                 })
             }
-            Panel::InteractionMenu { .. } | Panel::OpenMenu { .. } => match key {
+            Panel::PickupMenu
+            | Panel::InteractionMenu { .. }
+            | Panel::OpenMenu { .. }
+            | Panel::SmashMenu { .. } => match key {
                 K::J | K::Down => Some(Action::SelectInteraction { delta: 1 }),
                 K::K | K::Up => Some(Action::SelectInteraction { delta: -1 }),
                 K::Return => self
@@ -326,10 +399,11 @@ impl Game {
             5,
             6,
             yellow,
-            if matches!(self.panel, Panel::OpenDirection | Panel::OpenMenu { .. }) {
-                "開く"
-            } else {
-                "インタラクト"
+            match self.panel {
+                Panel::OpenDirection | Panel::OpenMenu { .. } => "開く",
+                Panel::PickupMenu => "足元の品を拾う",
+                Panel::SmashDirection | Panel::SmashMenu { .. } => "固定物を攻撃",
+                _ => "インタラクト",
             },
         );
         if matches!(self.panel, Panel::OpenDirection) {
@@ -368,12 +442,21 @@ impl Game {
             print(5, 10, white, "./Space:足元  Esc:戻る");
             return;
         }
+        if matches!(self.panel, Panel::SmashDirection) {
+            print(5, 8, white, "hjklyubn/矢印:攻撃する方向  Esc:戻る");
+            return;
+        }
         print(5, 7, white, "j/k・矢印:選択  Enter:実行  Esc:戻る");
         print(7, 9, white, "対象");
         print(34, 9, white, "行動");
         let choices = self.interaction_choices();
         if choices.is_empty() {
-            print(5, 11, white, "その方向に操作できる物はありません");
+            let message = if matches!(self.panel, Panel::PickupMenu) {
+                "足元に拾える物はありません"
+            } else {
+                "その方向に操作できる物はありません"
+            };
+            print(5, 11, white, message);
         }
         let start = self.selection.saturating_sub(19);
         for (row, (index, choice)) in choices.iter().enumerate().skip(start).take(20).enumerate() {
@@ -422,6 +505,7 @@ impl Game {
             ctx.print_ja(34, 6, "Enter:行動メニュー");
         }
         ctx.print_ja(4, 8, format!("{:<8} {}", "個数", entity.quantity));
+        ctx.print_ja(24, 8, format!("Tier {}", data.tier));
         ctx.print_ja(
             4,
             9,
@@ -513,7 +597,7 @@ impl Game {
             ctx.print_ja(
                 4,
                 13,
-                format!("クリティカル: 2D6で{}以上", weapon.critical_value),
+                format!("クリティカル: 3D6で{}以上", weapon.critical_value),
             );
         }
         for (row, line) in wrap_description(&definition.common.description, 71)
@@ -691,6 +775,7 @@ mod tests {
             hp: 2000,
             max_hp: 2000,
         };
+        a.nutrition.protein = 0.0;
         a.body.insert("left_arm".into(), InjuryStage::Bleeding);
         a.body.insert("left_leg".into(), InjuryStage::HeavyBleeding);
         key(&mut game, bl::VirtualKeyCode::I);
@@ -710,7 +795,7 @@ mod tests {
         assert_eq!(game.turn, 0);
         key(&mut game, bl::VirtualKeyCode::Return);
         assert_eq!(game.turn, 1);
-        assert_eq!(game.actor(p).unwrap().hp.hp, 1998);
+        assert_eq!(game.actor(p).unwrap().hp.hp, 1999);
         assert_eq!(game.actor(p).unwrap().treatment.bandages["left_leg"], 100);
         assert_eq!(game.bandage_choices(p), vec!["left_arm"]);
         assert!(matches!(game.entities[&bandage],Entity::Item(ref i) if i.quantity==1));
@@ -719,6 +804,7 @@ mod tests {
         key(&mut game, bl::VirtualKeyCode::Return);
         assert!(!game.entities.contains_key(&bandage));
         assert_eq!(game.actor(p).unwrap().treatment.bandages.len(), 2);
+        assert_eq!(game.actor(p).unwrap().hp.hp, 1999);
         assert_eq!(game.turn, 2);
     }
 
@@ -1116,6 +1202,7 @@ mod tests {
         let chest = game
             .spawn("item.treasure_chest", Some(p.offset(1, 0)), None, 1)
             .unwrap();
+        crate::game::containers::set_test_chest_contents(&mut game, chest);
         key(&mut game, bl::VirtualKeyCode::E);
         key(&mut game, bl::VirtualKeyCode::L);
         assert_eq!(game.interaction_choices().len(), 2);
@@ -1168,6 +1255,92 @@ mod tests {
         game.interact(chest, "open").unwrap();
         assert_eq!(game.entities.len(), after);
         assert!(game.container_entries(chest).is_empty());
+    }
+
+    #[test]
+    fn smash_uses_the_chosen_direction_and_filters_to_destructible_statics() {
+        let mut game = game();
+        let origin = game.position(game.player_id).unwrap();
+        let east = origin.offset(1, 0);
+        let chair = game.spawn("obstacle.chair", Some(east), None, 1).unwrap();
+        let table = game.spawn("obstacle.table", Some(east), None, 1).unwrap();
+        let west = origin.offset(-1, 0);
+        let tree = game.spawn("obstacle.tree", Some(west), None, 1).unwrap();
+        let north = origin.offset(0, -1);
+        game.spawn("obstacle.lamp", Some(north), None, 1).unwrap();
+        game.spawn("item.bread", Some(north), None, 1).unwrap();
+
+        key(&mut game, bl::VirtualKeyCode::T);
+        assert!(matches!(game.panel, Panel::World));
+        key(&mut game, bl::VirtualKeyCode::S);
+        assert!(matches!(game.panel, Panel::SmashDirection));
+        key(&mut game, bl::VirtualKeyCode::Up);
+        assert!(matches!(game.panel, Panel::SmashDirection));
+        key(&mut game, bl::VirtualKeyCode::Escape);
+        assert_eq!(game.turn, 0);
+
+        key(&mut game, bl::VirtualKeyCode::S);
+        key(&mut game, bl::VirtualKeyCode::Right);
+        assert!(matches!(game.panel, Panel::SmashMenu { position } if position == east));
+        let targets: Vec<_> = game
+            .interaction_choices()
+            .into_iter()
+            .map(|choice| {
+                let Action::Attack { target } = choice.action else {
+                    unreachable!()
+                };
+                target
+            })
+            .collect();
+        assert_eq!(targets, [chair, table]);
+        key(&mut game, bl::VirtualKeyCode::Down);
+        key(&mut game, bl::VirtualKeyCode::Return);
+        assert_eq!(game.turn, 1);
+        assert!(matches!(game.panel, Panel::World));
+        assert!(
+            game.messages
+                .iter()
+                .any(|message| message.contains(" -> テーブル:"))
+        );
+
+        // Directional input is available again after the previous attack animation.
+        game.animations.clear();
+        key(&mut game, bl::VirtualKeyCode::S);
+        key(&mut game, bl::VirtualKeyCode::H);
+        assert_eq!(game.turn, 2);
+        assert!(game.messages.iter().any(|message| {
+            message.contains(&format!(" -> {}:", game.definition(tree).common.name))
+        }));
+    }
+
+    #[test]
+    fn pickup_menu_selects_a_stack_at_feet_without_spending_a_turn_until_confirmed() {
+        let mut game = game();
+        let player = game.player_id;
+        let position = game.position(player).unwrap();
+        let bread = game.spawn("item.bread", Some(position), None, 1).unwrap();
+        let bolts = game.spawn("ammo.bolt", Some(position), None, 4).unwrap();
+        let nearby = game
+            .spawn("item.bandage", Some(position.offset(1, 0)), None, 1)
+            .unwrap();
+
+        key(&mut game, bl::VirtualKeyCode::G);
+        assert!(matches!(game.panel, Panel::PickupMenu));
+        assert_eq!(game.interaction_choices().len(), 2);
+        key(&mut game, bl::VirtualKeyCode::Down);
+        key(&mut game, bl::VirtualKeyCode::Escape);
+        assert_eq!(game.turn, 0);
+        assert_eq!(game.position(bolts), Some(position));
+
+        key(&mut game, bl::VirtualKeyCode::G);
+        key(&mut game, bl::VirtualKeyCode::Down);
+        key(&mut game, bl::VirtualKeyCode::Return);
+        assert!(matches!(game.panel, Panel::World));
+        assert_eq!(game.turn, 1);
+        assert!(matches!(&game.entities[&bolts], Entity::Item(item)
+            if item.location == ItemLocation::CarriedBy(player) && item.quantity == 4));
+        assert_eq!(game.position(bread), Some(position));
+        assert_eq!(game.position(nearby), Some(position.offset(1, 0)));
     }
 
     #[test]

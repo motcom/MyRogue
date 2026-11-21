@@ -40,23 +40,30 @@ impl Pos {
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Nutrition {
+pub struct FoodNutrition {
     pub protein: u32,
     pub carbohydrate: u32,
     pub vitamin: u32,
 }
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Nutrition {
+    pub protein: f32,
+    pub carbohydrate: f32,
+    pub vitamin: f32,
+}
 impl Nutrition {
     pub fn initial() -> Self {
         Self {
-            protein: 50,
-            carbohydrate: 50,
-            vitamin: 50,
+            protein: 50.0,
+            carbohydrate: 50.0,
+            vitamin: 50.0,
         }
     }
-    pub fn add(&mut self, n: &Self) {
-        self.protein = self.protein.saturating_add(n.protein).min(100);
-        self.carbohydrate = self.carbohydrate.saturating_add(n.carbohydrate).min(100);
-        self.vitamin = self.vitamin.saturating_add(n.vitamin).min(100);
+    pub fn add(&mut self, n: &FoodNutrition) {
+        self.protein = (self.protein + n.protein as f32).min(100.0);
+        self.carbohydrate = (self.carbohydrate + n.carbohydrate as f32).min(100.0);
+        self.vitamin = (self.vitamin + n.vitamin as f32).min(100.0);
     }
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -224,6 +231,8 @@ pub struct Binding {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MovableDefinition {
+    #[serde(default = "one")]
+    pub tier: u32,
     #[serde(default)]
     pub experience_reward: u32,
     #[serde(default)]
@@ -231,6 +240,10 @@ pub struct MovableDefinition {
     pub role: CreatureKind,
     pub controller: Controller,
     pub faction: String,
+    #[serde(default)]
+    pub hostile_factions: Vec<String>,
+    #[serde(default)]
+    pub lua_alerts: bool,
     pub hp: u32,
     pub body: Vec<String>,
     pub attributes: BTreeMap<String, u32>,
@@ -254,7 +267,36 @@ fn default_movement_cost() -> f32 {
     1.0
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MapSpawnRule {
+    pub definition_id: String,
+    pub chance: f64,
+    #[serde(default = "one")]
+    pub quantity: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub with_item: Option<String>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MapDefinition {
+    #[serde(default = "default_movement_cost")]
+    pub movement_cost: f32,
+    #[serde(default)]
+    pub spawns: Vec<MapSpawnRule>,
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StaticPlacement {
+    #[default]
+    MapGen,
+    Spawn,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct StaticDefinition {
+    #[serde(default)]
+    pub destroyed_map: Option<String>,
+    #[serde(default)]
+    pub placement: StaticPlacement,
     pub role: StaticRole,
     #[serde(default = "default_movement_cost")]
     pub movement_cost: f32,
@@ -264,9 +306,13 @@ pub struct StaticDefinition {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ItemDefinition {
+    #[serde(default = "one")]
+    pub tier: u32,
     pub throwable: Option<Throwable>,
     #[serde(default)]
     pub contents: Vec<ContainerEntry>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub loot: Option<ContainerLoot>,
     pub length_mm: u32,
     pub volume_ml: u32,
     pub mass_g: u32,
@@ -280,7 +326,7 @@ pub struct ItemDefinition {
     pub armor: Option<Armor>,
     #[serde(rename = "use")]
     pub use_effect: Option<Use>,
-    pub nutrition: Option<Nutrition>,
+    pub nutrition: Option<FoodNutrition>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -301,6 +347,26 @@ pub enum BlastKind {
 pub struct ContainerEntry {
     pub definition_id: String,
     pub quantity: u32,
+}
+pub const MAX_TIER: u32 = 10;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContainerLoot {
+    pub min_rolls: u32,
+    pub max_rolls: u32,
+    pub tier_weights: Vec<u32>,
+    pub entries: Vec<LootEntry>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LootEntry {
+    pub definition_id: String,
+    #[serde(default = "one")]
+    pub min_quantity: u32,
+    #[serde(default = "one")]
+    pub max_quantity: u32,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -326,6 +392,7 @@ pub struct Definition {
     pub initial_state: serde_json::Value,
     pub movable: Option<MovableDefinition>,
     pub r#static: Option<StaticDefinition>,
+    pub map: Option<MapDefinition>,
     pub item: Option<ItemDefinition>,
 }
 impl Definition {
@@ -377,6 +444,7 @@ impl Definition {
             [
                 self.movable.is_some(),
                 self.r#static.is_some(),
+                self.map.is_some(),
                 self.item.is_some(),
             ]
             .iter()
@@ -388,7 +456,15 @@ impl Definition {
         match self.category.as_str() {
             "movable" => {
                 let m = self.movable.as_ref().ok_or("missing movable")?;
+                ensure((1..=MAX_TIER).contains(&m.tier), "invalid movable tier")?;
                 ensure(!m.faction.is_empty(), "empty faction")?;
+                ensure(
+                    m.hostile_factions.len() <= 32
+                        && m.hostile_factions
+                            .iter()
+                            .all(|f| !f.is_empty() && f != &m.faction),
+                    "invalid hostile factions",
+                )?;
                 ensure(m.hp > 0, "HP must be positive")?;
                 ensure(
                     (1..=1_000_000).contains(&m.sanity),
@@ -458,6 +534,7 @@ impl Definition {
                                 | "pickup"
                                 | "open_inspect"
                                 | "interact"
+                                | "smash"
                                 | "open"
                         ),
                         "unknown control",
@@ -473,16 +550,45 @@ impl Definition {
                     }
                 }
             }
+            "map" => {
+                let m = self.map.as_ref().ok_or("missing map")?;
+                ensure(
+                    m.movement_cost.is_finite() && (0.01..=1000.0).contains(&m.movement_cost),
+                    "invalid map movement_cost",
+                )?;
+                ensure(
+                    matches!(self.common.durability, Durability::Flag(false))
+                        && self.interactions.is_empty(),
+                    "map base must be indestructible without interactions",
+                )?;
+                ensure(m.spawns.len() <= 32, "too many map spawn rules")?;
+                for rule in &m.spawns {
+                    ensure(
+                        !rule.definition_id.is_empty()
+                            && rule.chance.is_finite()
+                            && (0.0..=1.0).contains(&rule.chance)
+                            && (1..=1000).contains(&rule.quantity),
+                        "invalid map spawn rule",
+                    )?;
+                }
+            }
             "static" => {
                 let s = self.r#static.as_ref().ok_or("missing static")?;
                 ensure(
                     s.movement_cost.is_finite() && (0.01..=1000.0).contains(&s.movement_cost),
                     "static.movement_cost must be a finite number between 0.01 and 1000",
                 )?;
+                ensure(
+                    s.placement != StaticPlacement::Spawn
+                        || self.common.durability.max().is_none()
+                        || s.destroyed_map.is_some(),
+                    "spawned destructible static requires destroyed_map",
+                )?;
                 validate_combat(&s.combat)?;
             }
             "item" => {
                 let i = self.item.as_ref().ok_or("missing item")?;
+                ensure((1..=MAX_TIER).contains(&i.tier), "invalid item tier")?;
                 ensure(
                     i.stack_limit > 0 && i.stack_limit <= 1000,
                     "invalid stack limit",
@@ -495,7 +601,7 @@ impl Definition {
                 )?;
                 ensure(i.contents.len() <= 100, "too many container entries")?;
                 ensure(
-                    i.contents.is_empty() || i.stack_limit == 1,
+                    (i.contents.is_empty() && i.loot.is_none()) || i.stack_limit == 1,
                     "containers cannot stack",
                 )?;
                 for entry in &i.contents {
@@ -503,6 +609,32 @@ impl Definition {
                         (1..=1000).contains(&entry.quantity),
                         "invalid container quantity",
                     )?;
+                }
+                if let Some(loot) = &i.loot {
+                    ensure(
+                        i.contents.is_empty(),
+                        "container must use fixed contents or loot",
+                    )?;
+                    ensure(
+                        (1..=loot.max_rolls).contains(&loot.min_rolls)
+                            && loot.max_rolls as usize <= loot.entries.len()
+                            && loot.entries.len() <= 100,
+                        "invalid loot roll range",
+                    )?;
+                    ensure(
+                        (1..=MAX_TIER as usize).contains(&loot.tier_weights.len())
+                            && loot.tier_weights.iter().all(|weight| *weight <= 10_000),
+                        "invalid loot tier weights",
+                    )?;
+                    let mut ids = std::collections::BTreeSet::new();
+                    for entry in &loot.entries {
+                        ensure(
+                            ids.insert(&entry.definition_id)
+                                && (1..=entry.max_quantity).contains(&entry.min_quantity)
+                                && entry.max_quantity <= 1000,
+                            "invalid or duplicate loot entry",
+                        )?;
+                    }
                 }
                 if let Some(t) = &i.throwable {
                     ensure(
@@ -531,8 +663,8 @@ impl Definition {
                         "one-hand penalties require either grip",
                     )?;
                     ensure(
-                        (2..=12).contains(&w.critical_value),
-                        "critical_value must be 2..12",
+                        (3..=18).contains(&w.critical_value),
+                        "critical_value must be 3..18",
                     )?;
                     ensure(
                         matches!(w.mode.as_str(), "melee" | "ranged")
@@ -622,6 +754,9 @@ fn one() -> u32 {
 }
 #[derive(Clone, Debug, Deserialize)]
 pub struct Scenario {
+    /// None enables population for generated maps, but preserves hand-authored test maps.
+    #[serde(default)]
+    pub populate_map: Option<bool>,
     #[serde(default)]
     pub map_generator: Option<MapGenerator>,
     #[serde(default)]

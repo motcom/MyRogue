@@ -24,6 +24,7 @@ return {
     },
     initial_state = {},
     item = {
+        tier = 1,
         length_mm = 300,
         volume_ml = 500,
         mass_g = 1000,

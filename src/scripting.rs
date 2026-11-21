@@ -1,7 +1,7 @@
 use crate::{
     game::Game,
     model::config::*,
-    model::entity::{Grip, Hand, Id},
+    model::entity::{CreatureKind, Grip, Hand, Id},
 };
 use mlua::{Function, HookTriggers, Lua, LuaOptions, LuaSerdeExt, StdLib, Table, Value, VmState};
 use serde::Deserialize;
@@ -24,6 +24,11 @@ pub enum Action {
     },
     GhoulTurn {
         behavior: crate::game::enemies::GhoulBehavior,
+    },
+    AlertAllies {
+        target: Id,
+        radius: u32,
+        duration: u64,
     },
     OpenItemTarget {
         item: Id,
@@ -50,6 +55,11 @@ pub enum Action {
     Attack {
         target: Id,
     },
+    BeginSmash,
+    SmashDirection {
+        dx: i32,
+        dy: i32,
+    },
     Shoot {
         target: Id,
     },
@@ -60,6 +70,7 @@ pub enum Action {
     Pickup {
         item: Id,
     },
+    OpenPickupMenu,
     Drop {
         item: Id,
     },
@@ -228,7 +239,7 @@ pub enum Effect {
     },
     GainNutrition {
         target: Id,
-        nutrition: Nutrition,
+        nutrition: FoodNutrition,
     },
     ConsumeItem {
         target: Id,
@@ -402,16 +413,72 @@ impl LuaRuntime {
                     )?;
                 }
             }
+            if let Some(base) = d.r#static.as_ref().and_then(|s| s.destroyed_map.as_ref()) {
+                ensure(
+                    definitions.get(base).is_some_and(|d| d.category == "map"),
+                    "destroyed_map must reference a map_entity",
+                )?;
+            }
+            if let Some(map) = &d.map {
+                for rule in &map.spawns {
+                    let target = definitions
+                        .get(&rule.definition_id)
+                        .ok_or("unknown map spawn reference")?;
+                    ensure(
+                        target.category != "map",
+                        "map_entity cannot be a spawn target",
+                    )?;
+                    if let Some(st) = &target.r#static {
+                        ensure(
+                            st.placement == StaticPlacement::Spawn,
+                            "map spawn static must have placement = spawn",
+                        )?;
+                    }
+                    if let Some(item) = &target.item {
+                        ensure(
+                            rule.quantity <= item.stack_limit,
+                            "map spawn exceeds stack limit",
+                        )?;
+                    } else {
+                        ensure(rule.quantity == 1, "only items stack")?;
+                    }
+                    if let Some(item_id) = &rule.with_item {
+                        ensure(
+                            definitions
+                                .get(item_id)
+                                .is_some_and(|d| d.category == "item"),
+                            format!("map spawn with_item must reference an item: {item_id}"),
+                        )?;
+                    }
+                }
+            }
             if let Some(item) = &d.item {
-                for entry in &item.contents {
+                let fixed = item.contents.iter().map(|entry| &entry.definition_id);
+                let random = item
+                    .loot
+                    .iter()
+                    .flat_map(|loot| &loot.entries)
+                    .map(|entry| &entry.definition_id);
+                for id in fixed.chain(random) {
                     let content = definitions
-                        .get(&entry.definition_id)
+                        .get(id)
                         .and_then(|d| d.item.as_ref())
                         .ok_or("container content must be an item")?;
                     ensure(
-                        content.contents.is_empty(),
+                        content.contents.is_empty() && content.loot.is_none(),
                         "nested containers are not supported",
                     )?;
+                    if let Some(loot) = &item.loot {
+                        ensure(
+                            loot.tier_weights
+                                .get((content.tier - 1) as usize)
+                                .is_some_and(|weight| *weight > 0),
+                            format!(
+                                "missing positive loot weight for {id} (tier {})",
+                                content.tier
+                            ),
+                        )?;
+                    }
                 }
             }
             if let Some(w) = d.item.as_ref().and_then(|i| i.weapon.as_ref())
@@ -440,6 +507,50 @@ impl LuaRuntime {
             self.lua.from_value(self.eval("data/mental.lua")?)?;
         rules.validate()?;
         Ok(rules)
+    }
+    pub(crate) fn monster_drops(&self) -> Result<BTreeMap<u32, Vec<LootEntry>>> {
+        let drops: BTreeMap<u32, Vec<LootEntry>> =
+            self.lua.from_value(self.eval("data/monster_drops.lua")?)?;
+        for (&tier, entries) in &drops {
+            ensure(
+                (1..=MAX_TIER).contains(&tier) && (1..=100).contains(&entries.len()),
+                format!("invalid monster drop pool for tier {tier}"),
+            )?;
+            let mut seen = std::collections::BTreeSet::new();
+            for entry in entries {
+                let item = self
+                    .definitions
+                    .get(&entry.definition_id)
+                    .and_then(|definition| definition.item.as_ref())
+                    .ok_or_else(|| format!("unknown monster drop item: {}", entry.definition_id))?;
+                ensure(
+                    seen.insert(&entry.definition_id)
+                        && tier == item.tier
+                        && (1..=entry.max_quantity).contains(&entry.min_quantity)
+                        && entry.max_quantity <= item.stack_limit,
+                    format!(
+                        "invalid monster drop for tier {tier}: {}",
+                        entry.definition_id
+                    ),
+                )?;
+            }
+        }
+        for definition in self.definitions.values() {
+            if let Some(monster) = definition
+                .movable
+                .as_ref()
+                .filter(|movable| matches!(movable.role, CreatureKind::Monster))
+            {
+                ensure(
+                    drops.contains_key(&monster.tier),
+                    format!(
+                        "missing monster drop pool for {} (tier {})",
+                        definition.id, monster.tier
+                    ),
+                )?;
+            }
+        }
+        Ok(drops)
     }
     pub fn crafting_config(&self) -> Result<crate::game::crafting::CraftConfig> {
         let value = self.eval("data/production/recipes.lua")?;
@@ -528,6 +639,21 @@ impl LuaRuntime {
         )?;
         let view = w.clone();
         ctx.set(
+            "step_towards_position",
+            self.lua
+                .create_function(move |lua, (_, actor, value): (Value, Id, Value)| {
+                    let position: Pos = lua.from_value(value)?;
+                    let world = view.view();
+                    let occupant = world
+                        .at(position)
+                        .into_iter()
+                        .find(|id| world.actor(*id).is_some())
+                        .unwrap_or(0);
+                    to_lua(lua, &world.step_towards_position(actor, position, occupant))
+                })?,
+        )?;
+        let view = w.clone();
+        ctx.set(
             "nearest_hostile",
             self.lua
                 .create_function(move |lua, (_, id, range): (Value, Id, u32)| {
@@ -577,6 +703,48 @@ impl LuaRuntime {
                 .create_function(move |lua, (_, position): (Value, Value)| {
                     let position: Pos = lua.from_value(position)?;
                     Ok(view.view().movement_cost(position))
+                })?,
+        )?;
+        let view = w.clone();
+        ctx.set(
+            "can_step",
+            self.lua
+                .create_function(move |lua, (_, actor, value): (Value, Id, Value)| {
+                    let position: Pos = lua.from_value(value)?;
+                    Ok(view
+                        .view()
+                        .position(actor)
+                        .is_some_and(|from| view.view().can_step(from, position, actor)))
+                })?,
+        )?;
+        let view = w.clone();
+        ctx.set(
+            "nearby_items",
+            self.lua
+                .create_function(move |lua, (_, actor, range): (Value, Id, u32)| {
+                    let world = view.view();
+                    let mut items = Vec::new();
+                    if let Some(origin) = world.position(actor) {
+                        for (id, entity) in world.entities {
+                            if let crate::model::entity::Entity::Item(item) = entity
+                                && let crate::model::entity::ItemLocation::Ground(position) =
+                                    item.location
+                                && entity.alive()
+                                && origin.distance(position) <= range.min(32) as i32
+                                && world.sight(origin, position)
+                            {
+                                items.push((origin.distance(position), *id));
+                            }
+                        }
+                    }
+                    items.sort();
+                    to_lua(
+                        lua,
+                        &items
+                            .into_iter()
+                            .filter_map(|(_, id)| world.entity_snapshot(id))
+                            .collect::<Vec<_>>(),
+                    )
                 })?,
         )?;
         let view = w;

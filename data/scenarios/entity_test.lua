@@ -55,6 +55,21 @@ for i=1,12 do
     label(e and e[2] or "12爆発",x0,y0+7)
     if e then put(e[1],x0+3,y0+3) end
 end
+-- Six goblin roles, isolated to the east of the existing test rooms.
+local goblins = {"scavenger","scrap_guard","spearman","crossbowman","caller","chief"}
+local goblin_labels = {"13漁り屋","14鉄くず","15槍持ち","16弩撃ち","17呼び子","18頭目"}
+for i,kind in ipairs(goblins) do
+    local x0=60+((i-1)%2)*7
+    local y0=2+math.floor((i-1)/2)*10
+    for x=x0,x0+6 do for y=y0,y0+6 do
+        if x==x0 or x==x0+6 or y==y0 or y==y0+6 then
+            put((x==x0+3 and y==y0+6) and "obstacle.wooden_door" or "obstacle.stone_wall",x,y)
+        end
+    end end
+    put("monster.goblin_"..kind,x0+3,y0+3)
+    label(goblin_labels[i],x0,y0+7)
+end
+put("item.bread",64,5)
 -- Scavenger has a gun and ammunition to discover and equip inside its room.
 put("item.glock",54,15); put("ammo.pistol",55,15,20)
 -- Blast chamber: three destructible targets at distances 0/1/2 and a shielding wall.
@@ -69,7 +84,7 @@ end end
 label("倉庫",18,2)
 label("出口",25,19)
 return {
-    width=60, height=38, seed=42,
+    width=76, height=38, seed=42,
     ground="terrain.road", boundary="obstacle.stone_wall",
     player={definition_id="player.survivor",position={x=4,y=4,z=0}},
     spawns=spawns, labels=labels,

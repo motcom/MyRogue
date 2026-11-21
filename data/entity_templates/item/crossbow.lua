@@ -24,6 +24,7 @@ return {
     },
     initial_state = {},
     item = {
+        tier = 2,
         length_mm = 800,
         volume_ml = 3500,
         mass_g = 2500,
@@ -34,7 +35,7 @@ return {
         weapon = {
             skill = "bow",
             hands = "two",
-            critical_value = 10,
+            critical_value = 15,
             base_pv = 5, strength_cap = 0, accuracy_bonus = 0,
             mode = "ranged",
             damage = { dice = 1, sides = 8, bonus = 0 },

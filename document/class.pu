@@ -91,6 +91,7 @@ enum Panel <<game>> {
   OpenDirection / OpenMenu
 }
 enum Entity <<model::entity>> {
+  Map(MapEntity)
   Movable(MoveEntity)
   Static(StaticEntity)
   Item(ItemEntity)
@@ -112,6 +113,12 @@ class MoveEntity <<model::entity>> {
   progression: Box<Progression>
   inventory: Box<Inventory>
   crafting: Option<CraftJob>
+}
+class MapEntity <<model::entity>> {
+  id: EntityId
+  position: Pos
+  script: ScriptBinding
+  collision: Collision
 }
 class StaticEntity <<model::entity>> {
   id: EntityId
@@ -176,6 +183,7 @@ Animation *-- MeleeMotion
 MeleeMotion *-- Entity : 表示用スナップショット
 Game o-- TextureRenderer : Arc共有
 Entity *-- MoveEntity
+Entity *-- MapEntity
 Entity *-- StaticEntity
 Entity *-- ItemEntity
 MoveEntity *-- Inventory
@@ -245,6 +253,7 @@ class Definition <<model::config>> {
   category: String
   common: Common
   movable: Option<MovableDefinition>
+  map: Option<MapDefinition>
   static: Option<StaticDefinition>
   item: Option<ItemDefinition>
   initial_state: Value
@@ -252,20 +261,29 @@ class Definition <<model::config>> {
   validate()
 }
 class MovableDefinition <<model::config>> {
+  tier: u32
   experience_reward: u32
   skills: Skill
   controls: BTreeMap<String, Binding>
 }
+class MapDefinition <<model::config>> {
+  movement_cost: f32
+  spawns: Vec<MapSpawnRule>
+}
 class StaticDefinition <<model::config>> {
+  placement: StaticPlacement
+  destroyed_map: Option<String>
   movement_cost: f32
   facilities: Vec<FacilityKind>
 }
 class ItemDefinition <<model::config>> {
+  tier: u32
   weapon: Option<Weapon>
   armor: Option<Armor>
   tool_functions: Vec<ItemProp>
   tool_levels: BTreeMap<ItemProp, u32>
   contents: Vec<ContainerEntry>
+  loot: Option<ContainerLoot>
 }
 class Recipe <<game::crafting>> {
   id: String
@@ -306,6 +324,7 @@ ScriptResult *-- Effect
 Game ..> ScriptResult : 検証・適用・失敗時に巻き戻し
 ScriptBinding --> Definition : definition_id
 Definition *-- MovableDefinition
+Definition *-- MapDefinition
 Definition *-- StaticDefinition
 Definition *-- ItemDefinition
 Game *-- Recipe

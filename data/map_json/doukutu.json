@@ -1,0 +1,278 @@
+{
+  "schema_version": 1,
+  "resolution": 64,
+  "extent": 256.0,
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Noise",
+      "position": [
+        40.0,
+        40.0
+      ],
+      "kind": {
+        "type": "noise",
+        "kind": "simplex",
+        "seed": 42,
+        "frequency": 0.025,
+        "octaves": 4,
+        "gain": 0.5,
+        "lacunarity": 2.0
+      },
+      "inputs": []
+    },
+    {
+      "id": 2,
+      "name": "Morphology",
+      "position": [
+        300.0,
+        40.0
+      ],
+      "kind": {
+        "type": "map",
+        "operation": "morphology",
+        "mode": "erode",
+        "radius": 0,
+        "cutoff": 0.5
+      },
+      "inputs": [
+        1
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Connect Regions",
+      "position": [
+        560.0,
+        40.0
+      ],
+      "kind": {
+        "type": "connect_regions",
+        "cutoff": 0.5,
+        "width": 1,
+        "distortion": 0.03,
+        "frequency": 1.5,
+        "seed": 42,
+        "include_source": true
+      },
+      "inputs": [
+        2
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Blur",
+      "position": [
+        820.0,
+        220.0
+      ],
+      "kind": {
+        "type": "blur",
+        "radius": 1
+      },
+      "inputs": [
+        3
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Terrain Palette",
+      "position": [
+        1080.0,
+        220.0
+      ],
+      "kind": {
+        "type": "terrain",
+        "bands": [
+          {
+            "seam": {
+              "mode": "cut",
+              "width": 8
+            },
+            "max": 0.38,
+            "id": "obstacle.stone_wall",
+            "color": [
+              255,
+              255,
+              255
+            ]
+          },
+          {
+            "seam": {
+              "mode": "cut",
+              "width": 8
+            },
+            "max": 0.69,
+            "id": "terrain.wasteland",
+            "color": [
+              171,
+              152,
+              106
+            ]
+          },
+          {
+            "seam": {
+              "mode": "cut",
+              "width": 8
+            },
+            "max": 1.0,
+            "id": "terrain.field",
+            "color": [
+              96,
+              212,
+              165
+            ]
+          }
+        ]
+      },
+      "inputs": [
+        4
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Noise",
+      "position": [
+        40.0,
+        400.0
+      ],
+      "kind": {
+        "type": "noise",
+        "kind": "cellular",
+        "seed": 42,
+        "frequency": 0.3819593,
+        "octaves": 4,
+        "gain": 0.5,
+        "lacunarity": 2.0
+      },
+      "inputs": []
+    },
+    {
+      "id": 7,
+      "name": "Levels",
+      "position": [
+        300.0,
+        400.0
+      ],
+      "kind": {
+        "type": "levels",
+        "contrast": 4.0,
+        "brightness": -1.0,
+        "gamma": 0.1
+      },
+      "inputs": [
+        6
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Levels",
+      "position": [
+        552.0,
+        400.0
+      ],
+      "kind": {
+        "type": "levels",
+        "contrast": 4.0,
+        "brightness": -1.0,
+        "gamma": 0.1
+      },
+      "inputs": [
+        7
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Blend",
+      "position": [
+        832.00006,
+        508.0
+      ],
+      "kind": {
+        "type": "blend",
+        "mode": "multiply",
+        "opacity": 1.0
+      },
+      "inputs": [
+        2,
+        8,
+        null
+      ]
+    },
+    {
+      "id": 10,
+      "name": "Black to Alpha",
+      "position": [
+        1072.0,
+        540.0
+      ],
+      "kind": {
+        "type": "black_to_alpha"
+      },
+      "inputs": [
+        9
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Terrain Palette",
+      "position": [
+        1339.6364,
+        530.0
+      ],
+      "kind": {
+        "type": "terrain",
+        "bands": [
+          {
+            "seam": {
+              "mode": "cut",
+              "width": 8
+            },
+            "max": 1.0,
+            "id": "obstacle.conifer",
+            "color": [
+              189,
+              86,
+              86
+            ]
+          }
+        ]
+      },
+      "inputs": [
+        10
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Terrain Merge",
+      "position": [
+        1613.7064,
+        325.51126
+      ],
+      "kind": {
+        "type": "terrain_merge",
+        "cutoff": 0.5
+      },
+      "inputs": [
+        5,
+        11,
+        null
+      ]
+    },
+    {
+      "id": 13,
+      "name": "Output",
+      "position": [
+        1877.4792,
+        290.00003
+      ],
+      "kind": {
+        "type": "output"
+      },
+      "inputs": [
+        12
+      ]
+    }
+  ],
+  "output": 13
+}

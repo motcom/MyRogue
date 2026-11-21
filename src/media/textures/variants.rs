@@ -208,7 +208,7 @@ impl TextureRules {
                     .into_iter()
                     .filter_map(|id| {
                         let entity = &game.entities[&id];
-                        if matches!(entity, Entity::Static(s) if matches!(s.role, StaticRole::Terrain)) {
+                        if matches!(entity, Entity::Map(_)) || matches!(entity, Entity::Static(s) if matches!(s.role, StaticRole::Terrain)) {
                             Some(entity)
                         } else {
                             None
@@ -270,19 +270,17 @@ mod tests {
         let p = Pos { x: 10, y: 20, z: 0 };
         let directions = NEIGHBORS;
         for (dx, dy) in directions {
-            game.spawn("terrain.field", Some(p.offset(dx, dy)), None, 1)
+            game.set_map_entity("terrain.field", p.offset(dx, dy))
                 .unwrap();
         }
-        game.spawn("terrain.road", Some(p), None, 1).unwrap();
+        game.set_map_entity("terrain.road", p).unwrap();
         assert_eq!(catalog.rules.connection_mask(&game, p, "road"), 0);
-        game.spawn("terrain.road", Some(p.offset(-1, 0)), None, 1)
+        game.set_map_entity("terrain.road", p.offset(-1, 0))
             .unwrap();
-        game.spawn("terrain.road", Some(p.offset(1, 0)), None, 1)
-            .unwrap();
+        game.set_map_entity("terrain.road", p.offset(1, 0)).unwrap();
         assert_eq!(catalog.rules.connection_mask(&game, p, "road"), 10);
         let horizontal = catalog.rules.index(&game, "terrain.road", p).unwrap();
-        game.spawn("terrain.pond", Some(p.offset(1, 0)), None, 1)
-            .unwrap();
+        game.set_map_entity("terrain.pond", p.offset(1, 0)).unwrap();
         assert_eq!(catalog.rules.connection_mask(&game, p, "road"), 8);
         assert_ne!(
             horizontal,

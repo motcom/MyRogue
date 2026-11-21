@@ -1,12 +1,12 @@
 -- 効果がある場合だけ一個を消費する。
--- 一部位に一個。処置開始から100世界ターンで止血する。
+-- 一部位に一個。出血ダメージを即時に止め、100世界ターン後に処置を完了する。
 return {
     schema_version = 2,
     id = "item.bandage",
     category = "item",
     common = {
         name = "包帯",
-        description = "出血している部位に巻く包帯。100ターンで止血し、巻いた包帯は消える。",
+        description = "巻いた部位の出血ダメージをその場で止める。100ターン後に処置が完了し、包帯は外れる。",
         appearance = {
             glyph = "!",
             fg = { 220, 200, 140 },
@@ -22,6 +22,7 @@ return {
     },
     initial_state = {},
     item = {
+        tier = 1,
         length_mm = 150,
         volume_ml = 100,
         mass_g = 50,

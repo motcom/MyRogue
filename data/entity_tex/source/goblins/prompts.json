@@ -1,0 +1,30 @@
+{
+  "tool": "built-in image_gen.imagegen",
+  "transparent_background": true,
+  "prompts": [
+    {
+      "id": "scavenger",
+      "prompt": "Create one production game sprite, single goblin enemy in a ruined post-apocalyptic roguelike. Actual transparent background, no floor, no shadow, no text, no frame. Crisp chunky pixel art designed on a 32 by 32 logical grid (render larger using uniform square pixels), not a detailed illustration. Full body centered with 2-pixel transparent margin, orthographic three-quarter front view, squat hunched humanoid, very large pointed ears, olive green skin, yellow eyes, worn scavenged clothing. Strong readable silhouette. Use muted olive #64704B, moss #3C5140, dry grass #99A06B skin; dark charcoal #1A2023 outlines, leather #7A5B40, rust #8A4333, steel grey highlights. Keep details large enough to read when imported to 32x32. One character only. Goblin scavenger: small thin crouched body, ragged brown hood, large bulging scavenger sack on back, short scavenged knife held low. No guns."
+    },
+    {
+      "id": "scrap_guard",
+      "prompt": "Create one production game sprite, single goblin enemy in a ruined post-apocalyptic roguelike. Actual transparent background, no floor, no shadow, no text, no frame. Crisp chunky pixel art designed on a 32 by 32 logical grid (render larger using uniform square pixels), not a detailed illustration. Full body centered with 2-pixel transparent margin, orthographic three-quarter front view, squat hunched humanoid, very large pointed ears, olive green skin, yellow eyes, worn scavenged clothing. Strong readable silhouette. Use muted olive #64704B, moss #3C5140, dry grass #99A06B skin; dark charcoal #1A2023 outlines, leather #7A5B40, rust #8A4333, steel grey highlights. Keep details large enough to read when imported to 32x32. One character only. Goblin scrap iron guard: broad stocky armored silhouette, rusty patchwork scrap plate armor and helmet, battered rectangular road-sign shield in left hand and heavy club in right hand. No lettering on shield."
+    },
+    {
+      "id": "spearman",
+      "prompt": "Create one production game sprite, single goblin enemy in a ruined post-apocalyptic roguelike. Actual transparent background, no floor, no shadow, no text, no frame. Crisp chunky pixel art designed on a 32 by 32 logical grid (render larger using uniform square pixels), not a detailed illustration. Full body centered with 2-pixel transparent margin, orthographic three-quarter front view, squat hunched humanoid, very large pointed ears, olive green skin, yellow eyes, worn scavenged clothing. Strong readable silhouette. Use muted olive #64704B, moss #3C5140, dry grass #99A06B skin; dark charcoal #1A2023 outlines, leather #7A5B40, rust #8A4333, steel grey highlights. Keep details large enough to read when imported to 32x32. One character only. Goblin spearman: lean body, cloth wraps, long wooden spear with scrap metal pointed tip held vertically beside body, clearly visible above head, small leather vest. No shield."
+    },
+    {
+      "id": "crossbowman",
+      "prompt": "Create one production game sprite, single goblin enemy in a ruined post-apocalyptic roguelike. Actual transparent background, no floor, no shadow, no text, no frame. Crisp chunky pixel art designed on a 32 by 32 logical grid (render larger using uniform square pixels), not a detailed illustration. Full body centered with 2-pixel transparent margin, orthographic three-quarter front view, squat hunched humanoid, very large pointed ears, olive green skin, yellow eyes, worn scavenged clothing. Strong readable silhouette. Use muted olive #64704B, moss #3C5140, dry grass #99A06B skin; dark charcoal #1A2023 outlines, leather #7A5B40, rust #8A4333, steel grey highlights. Keep details large enough to read when imported to 32x32. One character only. Goblin crossbowman: hunched body in dark brown hood, conspicuous horizontal wooden crossbow held across chest, small bolt quiver over shoulder, pale cool steel crossbow details."
+    },
+    {
+      "id": "caller",
+      "prompt": "Create one production game sprite, single goblin enemy in a ruined post-apocalyptic roguelike. Actual transparent background, no floor, no shadow, no text, no frame. Crisp chunky pixel art designed on a 32 by 32 logical grid (render larger using uniform square pixels), not a detailed illustration. Full body centered with 2-pixel transparent margin, orthographic three-quarter front view, squat hunched humanoid, very large pointed ears, olive green skin, yellow eyes, worn scavenged clothing. Strong readable silhouette. Use muted olive #64704B, moss #3C5140, dry grass #99A06B skin; dark charcoal #1A2023 outlines, leather #7A5B40, rust #8A4333, steel grey highlights. Keep details large enough to read when imported to 32x32. One character only. Goblin caller: large pointed ears, ragged ochre scarf, holding a large salvaged tin horn to mouth, string of metal cans around waist as rattles. No weapons, no text."
+    },
+    {
+      "id": "chief",
+      "prompt": "Create one production game sprite, single goblin enemy in a ruined post-apocalyptic roguelike. Actual transparent background, no floor, no shadow, no text, no frame. Crisp chunky pixel art designed on a 32 by 32 logical grid (render larger using uniform square pixels), not a detailed illustration. Full body centered with 2-pixel transparent margin, orthographic three-quarter front view, squat hunched humanoid, very large pointed ears, olive green skin, yellow eyes, worn scavenged clothing. Strong readable silhouette. Use muted olive #64704B, moss #3C5140, dry grass #99A06B skin; dark charcoal #1A2023 outlines, leather #7A5B40, rust #8A4333, steel grey highlights. Keep details large enough to read when imported to 32x32. One character only. Goblin chief: larger broad goblin, crested scrap metal crown-like helmet, dark red ragged cape, well kept short sword in right hand and metal shield in left, scavenged leather chest armor, imposing upright posture. No explosives."
+    }
+  ]
+}

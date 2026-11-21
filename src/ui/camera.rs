@@ -375,8 +375,9 @@ mod tests {
             );
         }
         g.map_zoom = 1;
-        assert_eq!(g.map_camera().origin.x, 0);
-        assert_eq!(g.map_camera().origin.y, 0);
+        let camera = g.map_camera();
+        assert_eq!(camera.origin.x, (g.map.width - camera.columns).max(0));
+        assert_eq!(camera.origin.y, (g.map.height - camera.rows).max(0));
     }
     #[test]
     fn expanded_layout_keeps_commands_logs_and_slots_below_the_map() {
@@ -389,6 +390,14 @@ mod tests {
         for i in 0..6 {
             g.log(format!("log{i}"));
         }
+        let actor = g.actor_mut(g.player_id).unwrap();
+        actor.nutrition.protein = 49.75;
+        actor.nutrition.carbohydrate = 0.25;
+        actor.nutrition.vitamin = 0.0;
+        actor.body.insert(
+            "left_arm".into(),
+            crate::model::entity::InjuryStage::Bleeding,
+        );
         g.render(&mut ctx);
         {
             let backend = bl::BACKEND_INTERNAL.lock();
@@ -397,6 +406,26 @@ mod tests {
                 .as_any()
                 .downcast_ref::<bl::SimpleConsole>()
                 .unwrap();
+            let chars: Vec<_> = include_str!("../assets/japanese_chars.txt")
+                .chars()
+                .collect();
+            let status: String = (0..80)
+                .map(|x| {
+                    let glyph = layer.tiles[bl::Console::at(layer, x, 1)].glyph as usize;
+                    if glyph < 256 {
+                        char::from_u32(glyph as u32).unwrap()
+                    } else {
+                        chars[glyph - 256]
+                    }
+                })
+                .collect();
+            assert!(status.contains("タンパク質:50/100  炭水化物:1/100  ビタミン:0/100"));
+            assert!(status.contains("出血-1"));
+            let properties = g.property_lines();
+            assert!(properties.iter().any(|line| {
+                line.contains("タンパク質  50/100    炭水化物   1/100    ビタミン   0/100")
+            }));
+            assert_eq!(g.actor(g.player_id).unwrap().nutrition.protein, 49.75);
             assert_eq!(g.map_camera().rows, 38);
             assert_eq!(
                 layer.tiles[bl::Console::at(layer, 1, crate::ui::theme::COMMAND_TOP)].glyph,

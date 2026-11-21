@@ -19,7 +19,7 @@ impl Game {
             "right_leg",
         ]
         .into_iter()
-        .filter(|part| a.part_bleeding(part) > 0 && !a.treatment.bandages.contains_key(*part))
+        .filter(|part| a.part_bleeding(part) > 0)
         .map(String::from)
         .collect()
     }
@@ -179,8 +179,8 @@ impl Game {
         ctx.print_ja(
             5,
             21,
-            format!("一部位に一個使用。{duration}ターン後に止血し包帯が外れます"),
+            format!("一部位に一個使用。{duration}ターン後に処置が完了します"),
         );
-        ctx.print_ja(5, 23, "処置中も出血は続きます。選択中は時間が進みません");
+        ctx.print_ja(5, 23, "巻いた部位の出血ダメージはその場で止まります");
     }
 }

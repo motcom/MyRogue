@@ -43,17 +43,24 @@ impl Game {
         );
         if let Some(a) = self.actor(self.player_id) {
             let hp = &a.hp;
+            let [protein, carbohydrate, vitamin] = super::displayed_nutrition(&a.nutrition);
+            let bleeding = a.bleeding_damage();
+            let bleeding_status = if bleeding > 0 {
+                format!("  出血-{}", bleeding)
+            } else {
+                String::new()
+            };
             ctx.print_ja(
                 1,
                 1,
                 format!(
-                    "HP:{}/{}  水分:{}  タンパク質:{}/100  炭水化物:{}/100  ビタミン:{}/100{}",
+                    "HP:{}/{}{bleeding_status}  水分:{}  タンパク質:{}/100  炭水化物:{}/100  ビタミン:{}/100{}",
                     hp.hp,
                     hp.max_hp,
                     a.hydration.current,
-                    a.nutrition.protein,
-                    a.nutrition.carbohydrate,
-                    a.nutrition.vitamin,
+                    protein,
+                    carbohydrate,
+                    vitamin,
                     match a.respiratory_status() {
                         Some("pneumonia") => "  肺炎",
                         Some("cold") => "  風邪",
@@ -177,7 +184,7 @@ impl Game {
                 "g:拾う",
                 "f:射撃",
                 "r:装填",
-                "t:伐採  o:開く",
+                "s:固定物  o:開く",
             ],
             [
                 "@:プロパティ",
@@ -239,6 +246,9 @@ impl Game {
             Panel::ItemDetails { item } => self.render_item_details(ctx, item),
             Panel::Container { .. }
             | Panel::InteractionDirection
+            | Panel::PickupMenu
+            | Panel::SmashDirection
+            | Panel::SmashMenu { .. }
             | Panel::OpenDirection
             | Panel::OpenMenu { .. }
             | Panel::InteractionMenu { .. } => {

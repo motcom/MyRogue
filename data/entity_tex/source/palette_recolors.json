@@ -1,0 +1,16 @@
+{
+  "terrain.field": {"forest": "dry_grass", "moss": "bile", "olive": "spore"},
+  "terrain.road": {"peat": "bone", "bark": "warning", "timber": "linen"},
+  "terrain.pond": {"deep_water": "ice", "slate_blue": "fog", "verdigris": "flash"},
+  "terrain.wasteland": {"soot": "fog", "peat": "bone", "bark": "linen"},
+  "obstacle.stone_wall": {"charcoal": "steel", "steel": "ash", "ash": "charcoal"},
+  "obstacle.wooden_wall": {"peat": "bark", "bark": "timber", "timber": "clay"},
+  "obstacle.tree": {"infected": "olive", "dry_grass": "ash", "bile": "ash", "dust": "timber", "warning": "clay"},
+  "obstacle.conifer": {"infected": "olive", "dry_grass": "ash"},
+  "obstacle.hedge": {"infected": "olive", "dry_grass": "ash", "bile": "ash", "dust": "timber", "warning": "clay"},
+  "obstacle.wooden_door": {
+    "fog": "ash", "bone": "ash", "linen": "ash", "dust": "timber", "ember": "clay",
+    "dry_grass": "olive", "infected": "olive", "bile": "olive", "spore": "ash",
+    "verdigris": "steel", "ice": "ash", "warning": "clay", "flash": "ash"
+  }
+}
